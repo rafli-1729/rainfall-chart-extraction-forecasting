@@ -42,3 +42,53 @@ This repository serves as a complete applied machine learning workflow for daily
 ---
 
 This project was created by **Muhammad Rafli Azrarsyah**, a third-year Actuarial Science student at Universitas Gadjah Mada, who enjoys exploring data and uncovering insights through applied modeling and statistical analysis.
+
+
+```text
+rainfall-chart-extraction-forecasting
+├── data
+│   ├── raw
+│   │   ├── Train
+│   │   │   ├── Admiralty
+│   │   │   ├── Ang_Mo_Kio
+│   │   │   ├── Bukit_Panjang
+│   │   │   └── ...
+│   │   │       ├── Data_Gabungan_Lainnya_YYYY.csv
+│   │   │       └── Plot_Daily_Rainfall_Total_mm_YYYY.png
+│   │   └── Test
+│   │       ├── Admiralty
+│   │       ├── Ang_Mo_Kio
+│   │       ├── Bukit_Panjang
+│   │       └── ...
+│   │           ├── Data_Gabungan_Lainnya_YYYY.csv
+│   │           └── Plot_Daily_Rainfall_Total_mm_YYYY.png
+│   ├── process
+│   │   ├── extract
+│   │   │   └── *.csv
+│   │   └── merge
+│   │       ├── train
+│   │       │   └── *.csv
+│   │       └── test
+│   │           └── *.csv
+│   └── clean
+│       └── *.csv
+├── notebooks
+│   ├── 00_merge.ipynb
+│   ├── 01_extract.ipynb
+│   ├── 02_eda.ipynb
+│   ├── 03_preprocessing.ipynb
+│   └── 04_train.ipynb
+├── reports
+│   ├── executive_summary.md
+│   ├── final_report.pdf
+│   └── figures
+│       └── *.png
+├── src
+│   ├── cleaning.py
+│   ├── exploration.py
+│   ├── modeling.py
+│   ├── preprocessing.py
+│   └── __init__.py
+├── requirements.txt
+└── README.md
+```

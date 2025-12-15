@@ -1,15 +1,13 @@
 # Data
-data/raw/*
-data/merge/train/*
-data/merge/test/*
-data/process/*
-data/clean/*
+*.csv
+*.png
+!data/
+!data/**/
 !.gitkeep
 
 # Models & embeddings
 models/*.pkl
 models/*.joblib
-models/inference/*.csv
 embeddings/
 
 # Python

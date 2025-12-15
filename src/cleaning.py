@@ -17,7 +17,6 @@ def clean_column_names(df):
 def merge_each_city(
     input_root: str,
     output_dir: str,
-    clean_column_fn,
     verbose: bool = True
 ):
     os.makedirs(output_dir, exist_ok=True)
@@ -53,7 +52,7 @@ def merge_each_city(
         dfs = []
         for file in csv_files:
             df = pd.read_csv(file)
-            df = clean_column_fn(df)
+            df = clean_column_names(df)
             dfs.append(df)
 
         merged_df = pd.concat(dfs, ignore_index=True)
@@ -86,3 +85,23 @@ def merge_each_city(
         print("-" * (max_city_len + 45))
 
 
+def merge_all_cities(input_root: str, output_dir: str) -> pd.DataFrame:
+    csv_files = glob.glob(os.path.join(input_root, "*.csv"))
+
+    if not csv_files:
+        raise ValueError("No CSV files found")
+
+    dfs = []
+    for f in csv_files:
+        df = clean_column_names(pd.read_csv(f))
+        city = os.path.splitext(os.path.basename(f))[0]
+
+        df['lokasi'] = city
+        dfs.append(df)
+
+    merged_df = pd.concat(dfs, ignore_index=True)
+    merged_df['daily_rainfall_total_mm'] = np.nan
+
+    merged_df.to_csv(output_dir, index=False)
+
+    return merged_df
