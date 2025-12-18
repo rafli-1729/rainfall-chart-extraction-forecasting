@@ -5,14 +5,26 @@ import re
 import os
 
 
-def clean_column_names(df):
-    new_columns = []
-    for col in df.columns:
-        cleaned_col = col.strip().replace(' ', '_').lower()
-        cleaned_col = re.sub(r'[().%°]', '', cleaned_col)
-        new_columns.append(cleaned_col)
-    df.columns = new_columns
+def clean_column_names(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Standardize DataFrame column names:
+    - strip whitespace
+    - lowercase
+    - replace spaces with underscores
+    - remove special characters
+    """
+    df = df.copy()
+
+    df.columns = (
+        df.columns
+        .str.strip()
+        .str.lower()
+        .str.replace(" ", "_", regex=False)
+        .str.replace(r"[().%°/]", "", regex=True)
+    )
+
     return df
+
 
 def merge_each_city(
     input_root: str,
@@ -96,7 +108,7 @@ def merge_all_cities(input_root: str, output_dir: str) -> pd.DataFrame:
         df = clean_column_names(pd.read_csv(f))
         city = os.path.splitext(os.path.basename(f))[0]
 
-        df['lokasi'] = city
+        df['location'] = city
         dfs.append(df)
 
     merged_df = pd.concat(dfs, ignore_index=True)
