@@ -13,73 +13,31 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+from src.config import CLEAN_DIR, MODEL_DIR, INFERENCE_DIR, RAIN_EXTREME_COLUMNS, METEOROGICAL_COLUMNS
 
-CLEAN_PATH = PROJECT_ROOT/'data/clean'
-INFERENCE_PATH = PROJECT_ROOT/'data/inference/'
-MODEL_PATH = PROJECT_ROOT/'models'
-
-import pandas as pd
-import numpy as np
-
-from sklearn.base import BaseEstimator, TransformerMixin
-
-class LocationMedianImputer(BaseEstimator, TransformerMixin):
-    def __init__(self, cols, location_col='location'):
-        self.cols = cols
-        self.location_col = location_col
-
-    def fit(self, X, y=None):
-        X_ = X[[self.location_col] + self.cols]
-        self.medians_ = (
-            X_
-            .groupby(self.location_col)[self.cols]
-            .median()
-        )
-        self.global_median_ = X_[self.cols].median()
-        return self
-
-    def transform(self, X):
-        X = X.copy()
-        for col in self.cols:
-            X[col] = X[col].fillna(
-                X[self.location_col].map(self.medians_[col])
-            )
-
-            X[col] = X[col].fillna(self.global_median_[col])
-        return X
 
 print('Loading Train and Test data . . .')
-train = pd.read_csv(CLEAN_PATH/'train_engineered.csv')
-test = pd.read_csv(CLEAN_PATH/'test_engineered.csv')
+train = pd.read_csv(CLEAN_DIR/'train.csv')
+test = pd.read_csv(CLEAN_DIR/'test.csv')
 
-rain_extreme_cols = [
-    'highest_30_min_rainfall_mm',
-    'highest_60_min_rainfall_mm',
-    'highest_120_min_rainfall_mm'
-]
-
-num_cols = [
-    'mean_temperature_c',
-    'maximum_temperature_c',
-    'minimum_temperature_c',
-    'mean_wind_speed_kmh',
-    'max_wind_speed_kmh',
-]
-
-cat_cols = ['location']
 
 print('Building pipeline . . .')
 preprocess = ColumnTransformer(
     transformers=[
-        ('rain_zero', SimpleImputer(strategy='constant', keep_empty_features=True, fill_value=0), rain_extreme_cols),
-        ('num', SimpleImputer(strategy='median'), num_cols),
-        ('cat', OneHotEncoder(handle_unknown='ignore'), cat_cols)
+        ('rain_zero', SimpleImputer(strategy='constant', keep_empty_features=True, fill_value=0), RAIN_EXTREME_COLUMNS),
+        ('num', SimpleImputer(strategy='median'), METEOROGICAL_COLUMNS),
+        ('cat', OneHotEncoder(handle_unknown='ignore'), ['location'])
     ]
 )
 
 pipe = Pipeline(
     steps=[
+        ("time", TimeFeatures()),
+        ("temp", TemperatureFeatures()),
+        ("wind_rain", WindRainFeatures()),
+        ("lag", LagFeatures(lag_days=1)),
+        ("rolling", RollingStatsFeatures()),
+        ("cyclical", CyclicalInteractionFeatures()),
         ('preprocess', preprocess),
         ('model', XGBRegressor(
             objective='reg:squarederror',
@@ -126,5 +84,5 @@ pipe.fit(X, y)
 
 import joblib
 
-joblib.dump(pipe, MODEL_PATH/'xgb_model.pkl')
+joblib.dump(pipe, MODEL_DIR/'xgb_model.pkl')
 print('XGB Pipeline succesfully saved!')
