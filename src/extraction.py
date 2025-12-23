@@ -1,16 +1,28 @@
+# Ignore warning
+from warnings import filterwarnings
+filterwarnings('ignore')
+
+# Progress library
 from tqdm import tqdm
 import logging
+
+# Core library
 import pandas as pd
 import numpy as np
+
+# Pathing library
 import glob
 import os
 from pathlib import Path
+
+# Helper: clean column names from dataset preparation
+from src.dataset import clean_column_names
+
+# Computer vision library
 import cv2
-import matplotlib.pyplot as plt
-
-import src.cleaning as cleaning
-
 import pytesseract
+
+# Adjust here
 pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
 logging.basicConfig(
@@ -387,7 +399,7 @@ def dots_to_daily_rainfall(
     pixel_per_day = plot_width / total_days
     xs = sorted(x for x, _ in dots)
 
-    gap_factor = 20 
+    gap_factor = 20
     min_gap_px = gap_factor * pixel_per_day
 
     # cari gap antar dots
@@ -514,7 +526,7 @@ def process_all_locations(
             yearly_data = []
 
             for csv_file, png_file in zip(csvs, pngs):
-                df = cleaning.clean_column_names(pd.read_csv(csv_file))
+                df = clean_column_names(pd.read_csv(csv_file))
                 df["date"] = pd.to_datetime(df["date"])
 
                 rainfall = extract_rainfall_from_plot(
@@ -589,12 +601,9 @@ def build_training_dataset(
 def main():
     BASE_DIR = Path(__file__).resolve().parents[1]
 
-    input_root = BASE_DIR/"data/raw/Train"
-    output_dir = BASE_DIR/"data/processed/extract"
-
     process_all_locations(
-        input_root=input_root,
-        output_dir=output_dir,
+        input_root=BASE_DIR/"data/raw/Train",
+        output_dir=BASE_DIR/"data/process/extract",
         verbose=True
     )
 
