@@ -17,11 +17,6 @@ import os
 import glob
 from pathlib import Path
 
-# Defaults
-filterwarnings('ignore')
-np.set_printoptions(legacy='1.25')
-
-
 def convert_numeric(df: pd.DataFrame, columns: list[str]) -> list[str]:
     converted = []
     for col in columns:
@@ -33,6 +28,7 @@ def convert_numeric(df: pd.DataFrame, columns: list[str]) -> list[str]:
             converted.append(col)
 
     return df
+
 
 def load_random_train_sample(train_root: Path, seed: int | None = None):
     csv_files = list(train_root.glob("*/*.csv"))
@@ -176,7 +172,7 @@ def merge_each_city(
         )
 
 
-def merge_all_cities(input_root: str, output_dir: str) -> pd.DataFrame:
+def merge_all_cities(input_root: str, output_dir: str, corrupt_cols) -> pd.DataFrame:
     csv_files = glob.glob(os.path.join(input_root, "*.csv"))
 
     if not csv_files:
@@ -185,6 +181,7 @@ def merge_all_cities(input_root: str, output_dir: str) -> pd.DataFrame:
     dfs = []
     for f in csv_files:
         df = clean_column_names(pd.read_csv(f))
+        df = convert_numeric(df, corrupt_cols)
         city = os.path.splitext(os.path.basename(f))[0]
 
         df['location'] = city
@@ -198,23 +195,87 @@ def merge_all_cities(input_root: str, output_dir: str) -> pd.DataFrame:
     return merged_df
 
 
+def build_training_dataset(
+    features_dir: str | Path,
+    targets_dir: str | Path,
+    output_csv: str | Path,
+    corrupt_col: list,
+    verbose: bool = True
+) -> pd.DataFrame:
+    feature_files = sorted(features_dir.glob("*.csv"))
+
+    if not feature_files:
+        raise FileNotFoundError(f"No feature files found in {features_dir}")
+
+    merged_frames = []
+
+    for feature_path in feature_files:
+        location = feature_path.stem.replace("_merged", "")
+        target_path = targets_dir / f"{location}.csv"
+
+        if not target_path.exists():
+            if verbose:
+                tqdm.write(f"⚠️ Skipped {location}: target file not found")
+            continue
+
+        df_feat = pd.read_csv(feature_path, parse_dates=["date"])
+        df_tgt = pd.read_csv(target_path, parse_dates=["date"])
+
+        df_merged = pd.merge(
+            df_feat.sort_values("date"),
+            df_tgt.sort_values("date"),
+            on="date",
+            how="inner",
+            validate="one_to_one"
+        )
+
+        df_merged["location"] = location
+        merged_frames.append(df_merged)
+
+    if not merged_frames:
+        raise RuntimeError("No datasets were merged successfully")
+
+    final_df = pd.concat(merged_frames, ignore_index=True)
+
+    output_csv.parent.mkdir(parents=True, exist_ok=True)
+    final_df = convert_numeric(final_df, corrupt_col)
+    final_df.to_csv(output_csv, index=False)
+
+    if verbose:
+        print(f"\n✅ Final training dataset saved to: {output_csv}")
+        print(f"   Rows: {len(final_df):,}")
+        print(f"   Columns: {final_df.shape[1]}")
+
+    return final_df
+
+
+def merge_dataset(df, external_df, date_col, save_path):
+    df = df.copy()
+    df[date_col] = pd.to_datetime(df[date_col], format = 'mixed')
+    df['external_date'] = df[date_col].dt.strftime('%Y-%m')
+
+    df['external_date'] = pd.to_datetime(df['external_date'])
+    external_df['external_date'] = pd.to_datetime(external_df['external_date'])
+
+    df = pd.merge(df, external_df, on = 'external_date', how = 'left')
+
+    df = df.drop(columns=['external_date'])
+    df.sort_values([date_col, 'location'])
+
+    df.to_csv(save_path, index=False)
+
+
 if __name__ == '__main__':
-    # Paths
-    PROJECT_ROOT = Path(__file__).resolve().parents[1]
-    print(PROJECT_ROOT)
+    from config import RAW_DIR
 
-    RAW_PATH = Path(PROJECT_ROOT/'data/raw')
-
-    PROCESS_PATH = Path(PROJECT_ROOT/'data/process')
-    MERGE_PATH = PROCESS_PATH/'merge'
-
+    verbose=True
     train_sample = load_random_train_sample(
-        RAW_PATH / "train",
+        RAW_DIR / "train",
     )
 
     # print(train_sample.iloc[1,1])
 
-    train_columns = check_columns_consistency(RAW_PATH / "train")
+    train_columns = check_columns_consistency(RAW_DIR / "train")
     print(f"\nFound {len(train_columns)} unique column structures in raw train\n")
 
     for i, (cols, files) in enumerate(train_columns.items(), 1):
@@ -223,7 +284,7 @@ if __name__ == '__main__':
         print(f"Used by {len(files)} files")
         print("-" * 90, end='\n\n')
 
-    test_columns = check_columns_consistency(RAW_PATH/'test')
+    test_columns = check_columns_consistency(RAW_DIR/'test')
     print(f"Found {len(test_columns)} unique column structures in raw test\n")
 
     for i, (cols, files) in enumerate(test_columns.items(), 1):
@@ -231,27 +292,3 @@ if __name__ == '__main__':
         print(f"Columns ({len(cols)}): {cols}")
         print(f"Used by {len(files)} files")
         print("-" * 90)
-
-    print('Merge yearly data . . .')
-    merge_each_city(
-        input_root=RAW_PATH/'train',
-        output_dir=MERGE_PATH/'train'
-    )
-
-    merge_each_city(
-        input_root=RAW_PATH/'test',
-        output_dir=MERGE_PATH/'test'
-    )
-
-    print('Merge all cities to single data . . .')
-    merge_all_cities(
-        input_root=MERGE_PATH/'train',
-        output_dir=PROCESS_PATH/'train.csv'
-    )
-
-    merge_all_cities(
-        input_root=MERGE_PATH/'test',
-        output_dir=PROCESS_PATH/'test.csv'
-    )
-
-    print('Success!')
