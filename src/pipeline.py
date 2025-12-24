@@ -1,7 +1,7 @@
 import requests
 import pandas as pd
 
-from config import PROJECT_ROOT
+from src.config import PROJECT_ROOT
 
 def get_daily_weather(lat, lon, start_date, end_date):
     url = "https://api.open-meteo.com/v1/forecast"
