@@ -35,15 +35,23 @@ rainfall-chart-extraction-forecasting/
 │   └── clean/
 │
 ├── src/
-│   ├── config.py
 │   ├── locations.csv
+│   ├── app_service.py
+│   ├── config.py
+│   ├── dataset.py
+│   ├── external.py
 │   ├── extraction.py
 │   ├── features.py
-│   ├── dataset.py
 │   ├── model.py
-│   └── pipeline.py
+│   ├── observed.py
+│   ├── pipeline.py
+│   └── schema.py
 │
 ├── api/
+│   ├── dependencies.py
+│   └── main.py
+│
+├── ui/
 │   └── app.py
 │
 ├── scripts/
@@ -52,8 +60,8 @@ rainfall-chart-extraction-forecasting/
 │   └── train.py
 │
 ├── notebooks/
-│   ├── 02_eda.ipynb
-│   └── 03_preprocessing.ipynb
+│   ├── analysis.ipynb
+│   └── preprocessing.ipynb
 │
 ├── models/
 │   ├── xgb_model.pkl
@@ -61,7 +69,9 @@ rainfall-chart-extraction-forecasting/
 │
 ├── reports/
 │
-├── requirements.txt
+├── .gitattributes
+├── .gitignore
 ├── Dockerfile
+├── requirements.txt
 └── README.md
 ```
