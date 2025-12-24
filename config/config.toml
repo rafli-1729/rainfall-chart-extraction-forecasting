@@ -1,9 +1,10 @@
 [paths]
-data_dir = "data"
-raw_dir = "data/raw"
-process_dir = "data/process"
-clean_dir = "data/clean"
-models_dir = "models"
+data_dir        = "data"
+raw_dir         = "data/raw"
+process_dir     = "data/process"
+clean_dir       = "data/clean"
+inference_dir   = "data/inference"
+models_dir      = "models"
 
 [api]
 host = "0.0.0.0"
@@ -14,3 +15,15 @@ timezone = "Asia/Singapore"
 
 [features]
 rolling_windows = [30, 60, 120]
+rain_extreme_columns = [
+    'highest_30_min_rainfall_mm',
+    'highest_60_min_rainfall_mm',
+    'highest_120_min_rainfall_mm'
+]
+meteorogical_columns = [
+    'mean_temperature_c',
+    'maximum_temperature_c',
+    'minimum_temperature_c',
+    'mean_wind_speed_kmh',
+    'max_wind_speed_kmh',
+]

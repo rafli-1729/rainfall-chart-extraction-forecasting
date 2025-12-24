@@ -1,6 +1,8 @@
 import requests
 import pandas as pd
 
+from config import PROJECT_ROOT
+
 def get_daily_weather(lat, lon, start_date, end_date):
     url = "https://api.open-meteo.com/v1/forecast"
     params = {
@@ -29,8 +31,7 @@ def get_daily_weather(lat, lon, start_date, end_date):
         "maximum_temperature_c": data["temperature_2m_max"],
         "minimum_temperature_c": data["temperature_2m_min"],
         "mean_wind_speed_kmh": data["windspeed_10m_mean"],
-        "max_wind_speed_kmh": data["windspeed_10m_max"],
-        "daily_rainfall_total_mm": data["precipitation_sum"]
+        "max_wind_speed_kmh": data["windspeed_10m_max"]
     })
 
     return df
@@ -87,5 +88,31 @@ def build_feature_row(lat, lon, location, date):
     return pd.DataFrame([row])
 
 
+def build_features_from_api(location, date):
+    mapping = pd.read_csv(PROJECT_ROOT/'src'/'locations.csv')
+
+    latitude = (
+        mapping.loc[mapping['location'] == location, 'latitude']
+            .iloc[0]
+    )
+
+    longitude = (
+        mapping.loc[mapping['location'] == location, 'longitude']
+            .iloc[0]
+    )
+
+    return build_feature_row(float(latitude), float(longitude), location, date)
+
+
+def is_date_within_forecast_window(date: str) -> bool:
+    today = pd.Timestamp.today().normalize()
+    max_date = today + pd.Timedelta(days=14)
+    return today <= pd.to_datetime(date) <= max_date
+
+
 if __name__ == '__main__':
-    ...
+    data = build_features_from_api(**{
+        'location': 'Admiralty',
+        'date': '2025-12-24'
+    })
+    print(data)
