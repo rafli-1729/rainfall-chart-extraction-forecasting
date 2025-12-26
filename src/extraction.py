@@ -10,6 +10,8 @@ logger = logging.getLogger(__name__)
 # Core library
 import pandas as pd
 import numpy as np
+import re
+import matplotlib.pyplot as plt
 
 # Pathing library
 import glob
@@ -55,31 +57,6 @@ def detect_plot_top_border(
     occupancy_ratio: float = 0.20,
     binarize_thresh: int = 200
 ) -> int | None:
-    """
-    Detects the Y pixel position of the top plot border using
-    horizontal projection of inverted binary image.
-
-    Parameters
-    ----------
-    gray : np.ndarray
-        Grayscale image.
-    plot_x_start : int
-        Left boundary of plot region.
-    plot_x_end : int
-        Right boundary of plot region.
-    min_row : int, optional
-        Rows above this index are ignored to avoid title/labels.
-    occupancy_ratio : float, optional
-        Minimum ratio of dark pixels required to detect border.
-    binarize_thresh : int, optional
-        Threshold value for binary inversion.
-
-    Returns
-    -------
-    int | None
-        Y pixel of detected top border, or None if not found.
-    """
-
     plot_region = gray[:, plot_x_start:plot_x_end]
 
     _, binary_inv = cv2.threshold(
@@ -98,6 +75,57 @@ def detect_plot_top_border(
             return y
 
     return None
+
+def detect_plot_side_border(
+    image: np.ndarray,
+    min_height_ratio: float = 0.6,
+    canny1: int = 50,
+    canny2: int = 150,
+    hough_thresh: int = 150,
+    verbose: bool = False
+) -> dict:
+
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    h, w = gray.shape[:2]
+
+    edges = cv2.Canny(gray, canny1, canny2)
+
+    lines = cv2.HoughLinesP(
+        edges,
+        rho=1,
+        theta=np.pi / 180,
+        threshold=hough_thresh,
+        minLineLength=int(h * min_height_ratio),
+        maxLineGap=10
+    )
+
+    xs = []
+
+    if lines is not None:
+        for l in lines:
+            x1, y1, x2, y2 = l[0]
+
+            if abs(x1 - x2) <= 2:
+                height = abs(y2 - y1)
+                if height >= h * min_height_ratio:
+                    xs.append(x1)
+
+    if not xs:
+        if verbose:
+            print("[WARN] No vertical plot borders detected")
+        return {
+            "left": None,
+            "right": None,
+            "all_detected": []
+        }
+
+    xs = sorted(xs)
+
+    return {
+        "left": int(xs[0]),
+        "right": int(xs[-1]),
+        "all_detected": xs
+    }
 
 def find_data_boundaries(image: np.ndarray) -> dict:
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
@@ -118,34 +146,158 @@ def find_data_boundaries(image: np.ndarray) -> dict:
     x_coords = np.concatenate([cnt[:, 0, 0] for cnt in contours])
 
     return {
-        "data_start": int(x_coords.min())+1,
-        "data_end": int(x_coords.max())-1
+        "data_start": int(x_coords.min()),
+        "data_end": int(x_coords.max())
     }
+
+
+def inspect_xtick_ocr(
+    image: np.ndarray,
+    roi_x0: int = 0,
+    roi_x1: int = 1500,
+    roi_y0: int = 0,
+    roi_y1: int = 700,
+    show: bool = True
+):
+    import cv2, pytesseract, matplotlib.pyplot as plt
+
+    roi = image[roi_y0:roi_y1, roi_x0:roi_x1]
+    gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+
+    bin_img = cv2.threshold(
+        gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU
+    )[1]
+
+    data = pytesseract.image_to_data(
+        bin_img,
+        config="--psm 6",
+        output_type=pytesseract.Output.DICT
+    )
+
+    det = []
+    for i, txt in enumerate(data["text"]):
+        txt = txt.strip()
+        if not txt:
+            continue
+        x = data["left"][i]
+        y = data["top"][i]
+        w = data["width"][i]
+        h = data["height"][i]
+        det.append((txt, x, y, w, h))
+
+    overlay = roi.copy()
+    for txt, x, y, w, h in det:
+        cv2.rectangle(overlay, (x, y), (x+w, y+h), (255, 0, 0), 1)
+        cv2.putText(
+            overlay, txt, (x, max(10, y-3)),
+            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,0,0), 1
+        )
+
+    if show:
+        fig, axs = plt.subplots(1, 3, figsize=(18, 5))
+        axs[0].imshow(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+        axs[0].set_title("Original")
+        axs[0].axis("off")
+
+        axs[1].imshow(cv2.cvtColor(roi, cv2.COLOR_BGR2RGB))
+        axs[1].set_title("ROI")
+        axs[1].axis("off")
+
+        axs[2].imshow(cv2.cvtColor(overlay, cv2.COLOR_BGR2RGB))
+        axs[2].set_title("OCR result")
+        axs[2].axis("off")
+
+        plt.tight_layout()
+        plt.show()
+
+    return det
+
+def extract_xticks_from_ocr(ocr_results, roi_x0=0):
+    XTICK_PATTERN = re.compile(r"(\d{4})-(\d{2})")
+    ticks = []
+
+    for txt, x, y, w, h in ocr_results:
+        m = XTICK_PATTERN.search(txt)
+        if not m:
+            continue
+
+        year, month = m.groups()
+
+        try:
+            dt = pd.to_datetime(f"{year}-{month}")
+        except Exception:
+            continue
+
+        x_center = roi_x0 + x + w / 2
+        ticks.append((x_center, dt, txt))
+
+    if len(ticks) < 2:
+        raise RuntimeError("Not enough valid xticks detected")
+
+    return ticks
+
+def compute_pixel_time_slope(ticks):
+    xs = np.array([x for x, _, _ in ticks])
+    ts = np.array([t.value for _, t, _ in ticks])
+
+    a, b = np.polyfit(xs, ts, 1)
+    return a, b
+
+def estimate_pixel_spacing(ticks):
+    xs = np.array([x for x, _, _ in ticks])
+    dx = np.diff(xs)
+    return np.median(dx)
+
+
+def estimate_missing_left_timestamp(
+    ticks,
+    plot_border_x,
+    tolerance_ratio=0.4
+):
+    a, b = compute_pixel_time_slope(ticks)
+    pixel_spacing = estimate_pixel_spacing(ticks)
+
+    first_x, first_t, _ = ticks[0]
+
+    candidate_x = first_x - pixel_spacing
+    if candidate_x >= plot_border_x + tolerance_ratio * pixel_spacing:
+        candidate_t = pd.to_datetime(int(a * candidate_x + b))
+        return {
+            "exists": True,
+            "x": candidate_x,
+            "timestamp": candidate_t,
+            "method": "estimated_missing_tick"
+        }
+
+    border_t = pd.to_datetime(int(a * plot_border_x + b))
+    return {
+        "exists": False,
+        "x": plot_border_x,
+        "timestamp": border_t,
+        "method": "border_fallback"
+    }
+
 
 def extract_y_axis_labels(
     image: np.ndarray,
-    plot_x_start: int,
-    plot_x_end: int,
+    x_start: int = 30,
+    x_frac: float = 0.05,
+    y_top_frac: float = 0.10,
+    y_bot_frac: float = 0.95,
     verbose: bool = True
 ) -> dict:
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     h, w = gray.shape[:2]
 
-    # === ROI: match with your best debug settings ===
-    left_pad   = 75
-    right_pad  = 30
-    y_top_frac = 0.0
-    y_bot_frac = 0.90
-
+    x0 = x_start
+    x1 = int(w * x_frac)
     y0 = int(h * y_top_frac)
     y1 = int(h * y_bot_frac)
-    x1 = max(1, plot_x_start - right_pad)
-    x0 = max(0, x1 - left_pad)
 
     roi = gray[y0:y1, x0:x1]
-
-    # binarize (same as debug)
-    roi_bin = cv2.threshold(roi, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
+    roi_bin = cv2.threshold(
+        roi, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU
+    )[1]
 
     data = pytesseract.image_to_data(
         roi_bin,
@@ -154,8 +306,6 @@ def extract_y_axis_labels(
     )
 
     labels = []
-    roi_w = roi.shape[1]
-    x_cut = int(0.5 * roi_w)  # avoid axis line area (dynamic, not hardcoded 100)
 
     for i, txt in enumerate(data["text"]):
         txt = (txt or "").strip()
@@ -166,17 +316,16 @@ def extract_y_axis_labels(
         if val >= 200:
             continue
 
-        x, y, ww, hh = data["left"][i], data["top"][i], data["width"][i], data["height"][i]
+        x, y, ww, hh = (
+            data["left"][i],
+            data["top"][i],
+            data["width"][i],
+            data["height"][i],
+        )
 
-        # Skip boxes too far right inside ROI (often axis/grid noise)
-        if x + ww > x_cut:
-            continue
-
-        # Optional: skip tiny garbage boxes
         if ww < 6 or hh < 8:
             continue
 
-        # convert ROI coords -> global coords
         cx = x0 + x + ww / 2
         cy = y0 + y + hh / 2
 
@@ -184,10 +333,10 @@ def extract_y_axis_labels(
 
     if len(labels) < 2:
         if verbose:
-            detected = [t.strip() for t in data["text"] if (t or "").strip()]
             print("[DEBUG] ROI coords:", (x0, y0, x1, y1))
-            print("[DEBUG] Raw detected texts (first 30):", detected[:30])
+            print("[DEBUG] Raw OCR:", [t for t in data["text"] if t])
         raise ValueError("Insufficient Y-axis labels detected")
+
 
     labels_by_y = sorted(labels, key=lambda d: d["y"], reverse=True)
 
@@ -202,34 +351,49 @@ def extract_y_axis_labels(
             break
 
     if len(uniq) < 2:
-        raise ValueError("Need at least 2 distinct labels to estimate zero")
+        raise ValueError("Need at least 2 distinct labels")
 
-    low, high = uniq[0], uniq[1]  # low: bottom tick (largest y)
+    low, high = uniq[0], uniq[1]
+
     dy = high["y"] - low["y"]
     dv = high["value"] - low["value"]
-
     if dv == 0:
         raise ValueError("Can't compute scale (dv=0)")
 
     pixel_per_unit = abs(dy) / abs(dv)
 
-    # Predict y for 0 (same concept as before, but based on bottom tick)
     zero_y = low["y"] + low["value"] * pixel_per_unit
-    labels.append({"value": 0, "x": low["x"], "y": float(zero_y)})
+    labels.append({
+        "value": 0,
+        "x": low["x"],
+        "y": float(zero_y)
+    })
 
-    # Extrapolate max using top border (keep your logic)
-    top_border_y = detect_plot_top_border(gray, plot_x_start, plot_x_end)
+    data_boundaries = find_data_boundaries(image)
+    plot_x_start = data_boundaries['data_start']
+    plot_x_end = data_boundaries['data_end']
+    top_border_y = detect_plot_top_border(
+        gray, plot_x_start, plot_x_end
+    )
+
     if top_border_y is not None:
         max_label = max(labels, key=lambda l: l["value"])
         delta_pixel = max_label["y"] - top_border_y
         max_value = max_label["value"] + delta_pixel / pixel_per_unit
 
-        labels.append({"value": float(max_value), "x": max_label["x"], "y": float(top_border_y)})
+        labels.append({
+            "value": float(max_value),
+            "x": max_label["x"],
+            "y": float(top_border_y)
+        })
 
         if verbose:
-            print(f"[INFO] Extrapolated max value ≈ {max_value:.2f}")
+            print(f"[INFO] Extrapolated max ≈ {max_value:.2f}")
 
-    return {l["value"]: (l["x"], l["y"]) for l in sorted(labels, key=lambda l: l["value"])}
+    return {
+        l["value"]: (l["x"], l["y"])
+        for l in sorted(labels, key=lambda l: l["value"])
+    }
 
 def load_and_resize(image_path: str, scale: float = 1.0) -> np.ndarray:
     image = cv2.imread(image_path)
@@ -257,7 +421,6 @@ def extract_blue_mask(image: np.ndarray) -> np.ndarray:
 
 
 def build_y_pixel_to_value(labels: dict):
-    # labels: {value: (x, y)}
     pairs = sorted(
         [(coord[1], val) for val, coord in labels.items()],
         key=lambda t: t[0]  # sort by y pixel
@@ -279,30 +442,6 @@ def extract_dot_pixels(
     debug: bool = False,
     original_image: np.ndarray | None = None
 ) -> list[tuple[int, int]]:
-    """
-    Extract dot centroids from a blue mask using residual-based morphology.
-
-    Parameters
-    ----------
-    blue_mask : np.ndarray
-        Binary mask of blue pixels.
-    scale : float
-        Image scale factor.
-    vertical_kernel_height : int
-        Height of vertical structuring element for line removal.
-    min_area : int
-        Minimum connected component area to be considered a dot.
-    debug : bool
-        If True, visualize intermediate masks and detected dots.
-    original_image : np.ndarray | None
-        Original image for overlay visualization (required if debug=True).
-
-    Returns
-    -------
-    list[tuple[int, int]]
-        List of (x, y) dot centroids.
-    """
-
     vert_h = max(3, int(vertical_kernel_height * scale * scale))
     min_area = max(1, int(min_area * scale * scale))
 
@@ -310,14 +449,12 @@ def extract_dot_pixels(
         cv2.MORPH_RECT, (1, vert_h)
     )
 
-    # Remove vertical line components
     mask_vert = cv2.morphologyEx(
         blue_mask,
         cv2.MORPH_OPEN,
         vertical_kernel
     )
 
-    # Residual mask (dots)
     dot_mask = cv2.subtract(blue_mask, mask_vert)
 
     num, labels, stats, _ = cv2.connectedComponentsWithStats(
@@ -397,12 +534,10 @@ def dots_to_daily_rainfall(
     gap_factor = 20
     min_gap_px = gap_factor * pixel_per_day
 
-    # cari gap antar dots
     for x1, x2 in zip(xs[:-1], xs[1:]):
         gap = x2 - x1
 
         if gap > min_gap_px:
-            # ini gap mencurigakan → map ke day range
             day_start = int(round((x1 - x_start) / plot_width * (total_days - 1)))
             day_end   = int(round((x2 - x_start) / plot_width * (total_days - 1)))
 
@@ -410,39 +545,33 @@ def dots_to_daily_rainfall(
                 if 0 <= d < total_days:
                     rainfall[d] = np.nan
 
-    # bucket dots by day
     bucket = [[] for _ in range(total_days)]
     for x, y in dots:
         day = int(round((x - x_start) / plot_width * (total_days - 1)))
         if 0 <= day < total_days:
             bucket[day].append((x, y))
 
-    # resolve per day
     for day, pts in enumerate(bucket):
         if not pts:
             continue
 
         values = [float(y_to_value(y)) for _, y in pts]
 
-        # classify values
         nonzero = [v for v in values if v > zero_tol]
         zeros   = [v for v in values if v <= zero_tol]
 
-        # FLAG LOGIC (your rule)
         if len(nonzero) >= 2:
             flags["multi_dot_nonzero"] += 1
 
         elif len(nonzero) == 1 and len(zeros) >= 1:
             flags["mixed_zero_nonzero"] += 1
 
-        # final value = max (domain-correct)
         if nonzero:
             rainfall[day] = max(nonzero)
         else:
             rainfall[day] = 0.0
 
     return rainfall, flags
-
 
 
 def extract_rainfall_from_plot(
@@ -456,15 +585,27 @@ def extract_rainfall_from_plot(
         image      = load_and_resize(image_path, scale)
         gray       = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-        boundaries = find_data_boundaries(image)
-        plot_x_start = boundaries["data_start"]
-        plot_x_end   = boundaries["data_end"]
+        side = detect_plot_side_border(image)
+
+        ocr = inspect_xtick_ocr(image, show=False)
+        xticks = extract_xticks_from_ocr(ocr)
+
+        result = estimate_missing_left_timestamp(
+            xticks,
+            plot_border_x=0
+        )
+        xticks_pixel = [px for px, _, _ in xticks]
+
+        boundaries   = find_data_boundaries(image)
+
+        if boundaries["data_start"] < min(xticks_pixel) - 5:
+            boundaries["data_start"] = side['left']
+
+        boundaries["data_start"] = boundaries['data_start']
+        boundaries["data_end"] = boundaries['data_end']
 
         labels = extract_y_axis_labels(
-            image=image,
-            plot_x_start=plot_x_start,
-            plot_x_end=plot_x_end,
-            verbose=verbose
+            image=image, verbose=verbose
         )
 
         y_to_value  = build_y_pixel_to_value(labels)
@@ -489,7 +630,7 @@ def extract_rainfall_from_plot(
         return rainfall
 
     except Exception as e:
-        print("❌ ERROR in extract_rainfall_from_plot")
+        print("   ERROR in extract_rainfall_from_plot")
         print("   image_path :", image_path)
         print("   boundaries :", boundaries)
         print("   labels     :", labels)

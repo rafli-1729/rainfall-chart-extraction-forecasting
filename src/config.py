@@ -21,6 +21,8 @@ PROCESS_DIR = PROJECT_ROOT / CONFIG["paths"]["process_dir"]
 CLEAN_DIR = PROJECT_ROOT / CONFIG["paths"]["clean_dir"]
 INFERENCE_DIR = PROJECT_ROOT / CONFIG["paths"]["inference_dir"]
 MODEL_DIR = PROJECT_ROOT / CONFIG["paths"]["models_dir"]
+TEMPLATE_DIR = PROJECT_ROOT / CONFIG["paths"]["template_dir"]
+STYLE_DIR = PROJECT_ROOT / CONFIG["paths"]["style_dir"]
 
 # API
 API_HOST = CONFIG["api"]["host"]

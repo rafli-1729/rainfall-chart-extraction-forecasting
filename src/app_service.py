@@ -11,8 +11,7 @@ from src.observed import get_observed_daily_rainfall
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from src.config import MODEL_DIR, RAW_DIR, PROCESS_DIR
-MODEL_PATH = MODEL_DIR / "xgb_model.pkl"
+from src.config import RAW_DIR, PROCESS_DIR, MODEL_DIR
 
 def load_model(model_path: Path):
     if not model_path.exists():
@@ -21,15 +20,13 @@ def load_model(model_path: Path):
     model = joblib.load(model_path)
     return model
 
-_model = load_model(MODEL_PATH)
-
-
 def get_last_observed_date_sg():
     now_sg = datetime.now(ZoneInfo("Asia/Singapore"))
     return (now_sg.date() - timedelta(days=1)).strftime("%Y-%m-%d")
 
 
 def run_random_mode(
+    model,
     user_input: dict,
     external_df: pd.DataFrame
 ) -> pd.DataFrame:
@@ -46,7 +43,7 @@ def run_random_mode(
     )
     X = X.assign(**external_feats)
 
-    result = inference_data(_model, X)
+    result = inference_data(model, X)
     result["feature_source"] = "random_user_input"
 
     return format_response(
@@ -77,12 +74,13 @@ def validate_forecast_date(date_str: str):
 
 
 def run_forecast_mode(
+    model,
     location: str,
     date: str,
     external_df: pd.DataFrame
 ) -> pd.DataFrame:
     validate_forecast_date(date)
-    
+
     X = build_features_from_api(location, date)
 
     external_feats = get_external_features_for_date(
@@ -92,7 +90,7 @@ def run_forecast_mode(
 
     X = X.assign(**external_feats)
 
-    result = inference_data(_model, X)
+    result = inference_data(model, X)
     return format_response(
         mode="forecast",
         location=location,
@@ -105,6 +103,7 @@ def run_forecast_mode(
 
 
 def run_evaluation_mode(
+    model,
     location: str,
     date: str,
     external_df: pd.DataFrame,
@@ -157,7 +156,7 @@ def run_evaluation_mode(
         X = X.assign(**external_feats)
         feature_source = "open_meteo"
 
-    pred_df = inference_data(_model, X)
+    pred_df = inference_data(model, X)
     observed_df = get_observed_daily_rainfall(location, date)
     if observed_df.empty:
         raise HTTPException(

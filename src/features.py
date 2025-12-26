@@ -183,7 +183,6 @@ class CyclicalInteractionFeatures(BaseEstimator, TransformerMixin):
 
         return df
 
-
 class DropFeatures(BaseEstimator, TransformerMixin):
     def __init__(self, cols: list[str]):
         self.cols = cols
