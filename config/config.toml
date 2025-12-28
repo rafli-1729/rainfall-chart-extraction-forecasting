@@ -1,12 +1,26 @@
+[meta]
+project_name = "rainfall-prediction"
+timezone = "Asia/Singapore"
+created_by = "Rafli"
+
+[versions]
+schema = "1.0"
+
 [paths]
 data_dir        = "data"
 raw_dir         = "data/raw"
-process_dir     = "data/process"
+interim_dir     = "data/interim"
+processed_dir   = "data/processed"
 clean_dir       = "data/clean"
 inference_dir   = "data/inference"
-template_dir    = "assets/templates"
-style_dir       = "assets/styles"
+
+database_dir    = "database"
+
+template_dir    = "app/assets/templates"
+style_dir       = "app/assets/styles"
+
 models_dir      = "models"
+metadata_dir    = "metadata"
 
 [api]
 host = "0.0.0.0"
