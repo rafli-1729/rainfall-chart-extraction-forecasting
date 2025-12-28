@@ -1,0 +1,82 @@
+[
+  {"station_code":"S104","station_name":"Admiralty","latitude":1.4403,"longitude":103.8008},
+  {"station_code":"S105","station_name":"Admiralty West","latitude":1.4460,"longitude":103.7900},
+  {"station_code":"S109","station_name":"Ang Mo Kio","latitude":1.3691,"longitude":103.8454},
+
+  {"station_code":"S86","station_name":"Boon Lay East","latitude":1.3400,"longitude":103.7170},
+  {"station_code":"S63","station_name":"Boon Lay West","latitude":1.3380,"longitude":103.7060},
+
+  {"station_code":"S120","station_name":"Botanic Garden","latitude":1.3138,"longitude":103.8159},
+  {"station_code":"S55","station_name":"Buangkok","latitude":1.3830,"longitude":103.8930},
+  {"station_code":"S64","station_name":"Bukit Panjang","latitude":1.3774,"longitude":103.7719},
+  {"station_code":"S90","station_name":"Bukit Timah","latitude":1.3294,"longitude":103.8021},
+  {"station_code":"S92","station_name":"Buona Vista","latitude":1.3074,"longitude":103.7897},
+
+  {"station_code":"S61","station_name":"Chai Chee","latitude":1.3250,"longitude":103.9230},
+  {"station_code":"S24","station_name":"Changi","latitude":1.3644,"longitude":103.9915},
+
+  {"station_code":"S114","station_name":"Choa Chu Kang Central","latitude":1.3840,"longitude":103.7447},
+  {"station_code":"S121","station_name":"Choa Chu Kang South","latitude":1.3790,"longitude":103.7370},
+  {"station_code":"S11","station_name":"Choa Chu Kang West","latitude":1.3820,"longitude":103.7320},
+
+  {"station_code":"S50","station_name":"Clementi","latitude":1.3151,"longitude":103.7652},
+  {"station_code":"S118","station_name":"Dhoby Ghaut","latitude":1.2986,"longitude":103.8455},
+  {"station_code":"S107","station_name":"East Coast Parkway","latitude":1.3030,"longitude":103.9120},
+
+  {"station_code":"S39","station_name":"Jurong East","latitude":1.3340,"longitude":103.7390},
+  {"station_code":"S101","station_name":"Jurong North","latitude":1.3490,"longitude":103.7200},
+  {"station_code":"S44","station_name":"Jurong West","latitude":1.3396,"longitude":103.7073},
+  {"station_code":"S117","station_name":"Jurong Island","latitude":1.2560,"longitude":103.7010},
+  {"station_code":"S33","station_name":"Jurong Pier","latitude":1.2885,"longitude":103.7095},
+
+  {"station_code":"S31","station_name":"Kampong Bahru","latitude":1.2760,"longitude":103.8350},
+  {"station_code":"S71","station_name":"Kent Ridge","latitude":1.2936,"longitude":103.7844},
+  {"station_code":"S122","station_name":"Khatib","latitude":1.4170,"longitude":103.8320},
+  {"station_code":"S66","station_name":"Kranji Reservoir","latitude":1.4240,"longitude":103.7280},
+  {"station_code":"S112","station_name":"Lim Chu Kang","latitude":1.4170,"longitude":103.7020},
+
+  {"station_code":"S08","station_name":"Lower Peirce Reservoir","latitude":1.3790,"longitude":103.8260},
+  {"station_code":"S07","station_name":"Macritchie Reservoir","latitude":1.3420,"longitude":103.8330},
+  {"station_code":"S40","station_name":"Mandai","latitude":1.4040,"longitude":103.7760},
+
+  {"station_code":"S108","station_name":"Marina Barrage","latitude":1.2800,"longitude":103.8700},
+  {"station_code":"S113","station_name":"Marine Parade","latitude":1.3035,"longitude":103.9060},
+  {"station_code":"S111","station_name":"Newton","latitude":1.3120,"longitude":103.8380},
+  {"station_code":"S119","station_name":"Nicoll Highway","latitude":1.2990,"longitude":103.8630},
+
+  {"station_code":"S116","station_name":"Pasir Panjang","latitude":1.2760,"longitude":103.7910},
+  {"station_code":"S94","station_name":"Pasir Ris Central","latitude":1.3730,"longitude":103.9490},
+  {"station_code":"S29","station_name":"Pasir Ris West","latitude":1.3660,"longitude":103.9410},
+  {"station_code":"S06","station_name":"Paya Lebar","latitude":1.3170,"longitude":103.8920},
+
+  {"station_code":"S106","station_name":"Pulau Ubin","latitude":1.4040,"longitude":103.9600},
+  {"station_code":"S81","station_name":"Punggol","latitude":1.4052,"longitude":103.9020},
+  {"station_code":"S77","station_name":"Queenstown","latitude":1.2940,"longitude":103.8060},
+  {"station_code":"S25","station_name":"Seletar","latitude":1.4160,"longitude":103.8670},
+
+  {"station_code":"S102","station_name":"Semakau Island","latitude":1.2080,"longitude":103.7650},
+  {"station_code":"S80","station_name":"Sembawang","latitude":1.4490,"longitude":103.8200},
+  {"station_code":"S60","station_name":"Sentosa Island","latitude":1.2490,"longitude":103.8300},
+
+  {"station_code":"S36","station_name":"Serangoon","latitude":1.3490,"longitude":103.8730},
+  {"station_code":"S110","station_name":"Serangoon North","latitude":1.3720,"longitude":103.8740},
+  {"station_code":"S84","station_name":"Simei","latitude":1.3430,"longitude":103.9570},
+
+  {"station_code":"S79","station_name":"Somerset Road","latitude":1.3000,"longitude":103.8390},
+  {"station_code":"S43","station_name":"Tai Seng","latitude":1.3350,"longitude":103.8880},
+  {"station_code":"S78","station_name":"Tanjong Katong","latitude":1.3030,"longitude":103.9050},
+  {"station_code":"S72","station_name":"Tanjong Pagar","latitude":1.2760,"longitude":103.8450},
+
+  {"station_code":"S23","station_name":"Tengah","latitude":1.3660,"longitude":103.7280},
+  {"station_code":"S88","station_name":"Toa Payoh","latitude":1.3340,"longitude":103.8560},
+  {"station_code":"S89","station_name":"Tuas","latitude":1.3210,"longitude":103.6510},
+  {"station_code":"S115","station_name":"Tuas South","latitude":1.2940,"longitude":103.6360},
+  {"station_code":"S82","station_name":"Tuas West","latitude":1.3290,"longitude":103.6600},
+
+  {"station_code":"S35","station_name":"Ulu Pandan","latitude":1.3230,"longitude":103.7690},
+  {"station_code":"S69","station_name":"Upper Peirce Reservoir","latitude":1.3890,"longitude":103.8110},
+  {"station_code":"S46","station_name":"Upper Thomson","latitude":1.3610,"longitude":103.8360},
+
+  {"station_code":"S123","station_name":"Whampoa","latitude":1.3230,"longitude":103.8560},
+  {"station_code":"S91","station_name":"Yishun","latitude":1.4300,"longitude":103.8350}
+]
