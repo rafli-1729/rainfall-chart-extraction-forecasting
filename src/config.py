@@ -2,35 +2,67 @@ from pathlib import Path
 import os
 import tomllib
 
-# Project root
+
+# ---------- helpers ----------
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
-# Pilih config via env (default: config.toml)
-CONFIG_PATH = os.getenv(
-    "APP_CONFIG",
-    PROJECT_ROOT / "config" / "config.toml"
+def _resolve(p: str) -> Path:
+    return PROJECT_ROOT / p
+
+
+# ---------- config sections ----------
+class PathsConfig:
+    def __init__(self, data: dict):
+        self.data       = _resolve(data["data_dir"])
+        self.raw        = _resolve(data["raw_dir"])
+        self.processed  = _resolve(data["processed_dir"])
+        self.clean      = _resolve(data["clean_dir"])
+        self.inference  = _resolve(data["inference_dir"])
+        self.interim    = _resolve(data["interim_dir"])
+
+        self.models     = _resolve(data["models_dir"])
+        self.database   = _resolve(data["database_dir"])
+
+        self.templates  = _resolve(data["template_dir"])
+        self.styles     = _resolve(data["style_dir"])
+
+        self.metadata   = _resolve(data["metadata_dir"])
+
+
+class APIConfig:
+    def __init__(self, data: dict):
+        self.host: str = data["host"]
+        self.port: int = int(data["port"])
+
+
+class WeatherConfig:
+    def __init__(self, data: dict):
+        self.timezone: str = data["timezone"]
+
+
+class FeatureConfig:
+    def __init__(self, data: dict):
+        self.rolling_windows = data["rolling_windows"]
+        self.rain_extreme_columns = data["rain_extreme_columns"]
+        self.meteorogical_columns = data["meteorogical_columns"]
+        self.locations = data["locations"]
+
+
+# ---------- root config ----------
+class AppConfig:
+    def __init__(self, toml_path: Path):
+        with open(toml_path, "rb") as f:
+            raw = tomllib.load(f)
+
+        self.paths = PathsConfig(raw["paths"])
+        self.api = APIConfig(raw["api"])
+        self.weather = WeatherConfig(raw["weather"])
+        self.features = FeatureConfig(raw["features"])
+
+
+# ---------- load once ----------
+CONFIG_PATH = Path(
+    os.getenv("APP_CONFIG", PROJECT_ROOT / "config" / "config.toml")
 )
 
-with open(CONFIG_PATH, "rb") as f:
-    CONFIG = tomllib.load(f)
-
-# Paths
-DATA_DIR = PROJECT_ROOT / CONFIG["paths"]["data_dir"]
-RAW_DIR = PROJECT_ROOT / CONFIG["paths"]["raw_dir"]
-PROCESS_DIR = PROJECT_ROOT / CONFIG["paths"]["process_dir"]
-CLEAN_DIR = PROJECT_ROOT / CONFIG["paths"]["clean_dir"]
-INFERENCE_DIR = PROJECT_ROOT / CONFIG["paths"]["inference_dir"]
-MODEL_DIR = PROJECT_ROOT / CONFIG["paths"]["models_dir"]
-TEMPLATE_DIR = PROJECT_ROOT / CONFIG["paths"]["template_dir"]
-STYLE_DIR = PROJECT_ROOT / CONFIG["paths"]["style_dir"]
-
-# API
-API_HOST = CONFIG["api"]["host"]
-API_PORT = CONFIG["api"]["port"]
-
-# Weather / features
-TIMEZONE = CONFIG["weather"]["timezone"]
-ROLLING_WINDOWS = CONFIG["features"]["rolling_windows"]
-RAIN_EXTREME_COLUMNS = CONFIG['features']['rain_extreme_columns']
-METEOROGICAL_COLUMNS = CONFIG['features']['meteorogical_columns']
-VALID_LOCATIONS = CONFIG['features']['locations']
+config = AppConfig(CONFIG_PATH)

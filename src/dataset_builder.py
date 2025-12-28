@@ -84,6 +84,9 @@ def clean_column_names(df: pd.DataFrame) -> pd.DataFrame:
 
     df.columns = (
         df.columns
+        .str.replace("\ufeff", "", regex=False)
+        .str.replace("â", "", regex=False)
+        .str.replace("Â", "", regex=False)
         .str.strip()
         .str.lower()
         .str.replace(" ", "_", regex=False)
@@ -93,7 +96,7 @@ def clean_column_names(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def merge_each_city(
+def concatenate_csv_files(
     input_root: str,
     output_dir: str,
     verbose: bool = True,
@@ -123,24 +126,13 @@ def merge_each_city(
         city_path = os.path.join(input_root, city)
         csv_files = sorted(glob.glob(os.path.join(city_path, "*.csv")))
 
-        if not csv_files:
-            if verbose:
-                logger.warning("%-*s | no CSV files found", max_city_len, city)
-            continue
-
-        dfs = []
-        for file in csv_files:
-            df = pd.read_csv(file)
-            df = clean_column_names(df)
-            dfs.append(df)
-
-        merged_df = pd.concat(dfs, ignore_index=True)
+        concatenated_df = concatenate_csv_files(csv_path, id=1)
 
         output_path = os.path.join(output_dir, f"{city}.csv")
-        merged_df.to_csv(output_path, index=False)
+        concatenated_df.to_csv(output_path, index=False)
 
         files_count = len(csv_files)
-        rows_count = merged_df.shape[0]
+        rows_count = concatenated_df.shape[0]
 
         total_files += files_count
         total_rows += rows_count
@@ -171,8 +163,11 @@ def merge_each_city(
             sep,
         )
 
-
-def merge_all_cities(input_root: str, output_dir: str, corrupt_cols) -> pd.DataFrame:
+def concatenate_csv_files(
+    id: int | str ,
+    input_root: str,
+    output_dir: str = None,
+) -> pd.DataFrame:
     csv_files = glob.glob(os.path.join(input_root, "*.csv"))
 
     if not csv_files:
@@ -181,16 +176,15 @@ def merge_all_cities(input_root: str, output_dir: str, corrupt_cols) -> pd.DataF
     dfs = []
     for f in csv_files:
         df = clean_column_names(pd.read_csv(f))
-        df = convert_numeric(df, corrupt_cols)
         city = os.path.splitext(os.path.basename(f))[0]
 
-        df['location'] = city
+        df[f'source_{id}'] = city
         dfs.append(df)
 
     merged_df = pd.concat(dfs, ignore_index=True)
-    merged_df['daily_rainfall_total_mm'] = np.nan
 
-    merged_df.to_csv(output_dir, index=False)
+    if output_dir:
+        merged_df.to_csv(output_dir, index=False)
 
     return merged_df
 
@@ -208,14 +202,13 @@ def build_training_dataset(
         raise FileNotFoundError(f"No feature files found in {features_dir}")
 
     merged_frames = []
-
     for feature_path in feature_files:
-        location = feature_path.stem.replace("_merged", "")
+        location = feature_path.stem
         target_path = targets_dir / f"{location}.csv"
 
         if not target_path.exists():
             if verbose:
-                tqdm.write(f"⚠️ Skipped {location}: target file not found")
+                logger.warning(f"⚠️ Skipped {location}: target file not found")
             continue
 
         df_feat = pd.read_csv(feature_path, parse_dates=["date"])
@@ -249,46 +242,64 @@ def build_training_dataset(
     return final_df
 
 
-def merge_dataset(df, external_df, date_col, save_path):
+def make_time_key(
+    df: pd.DataFrame,
+    col: str,
+    fmt: str,
+    out_col: str = "__time_key"
+):
     df = df.copy()
-    df[date_col] = pd.to_datetime(df[date_col], format = 'mixed')
-    df['external_date'] = df[date_col].dt.strftime('%Y-%m')
+    df[out_col] = pd.to_datetime(df[col], format='mixed').dt.strftime(fmt)
+    return df
 
-    df['external_date'] = pd.to_datetime(df['external_date'])
-    external_df['external_date'] = pd.to_datetime(external_df['external_date'])
 
-    df = pd.merge(df, external_df, on = 'external_date', how = 'left')
+def infer_time_resolution(series: pd.Series) -> str:
+    s = pd.to_datetime(series, errors="coerce").dropna()
 
-    df = df.drop(columns=['external_date'])
-    df.sort_values([date_col, 'location'])
+    if s.dt.day.nunique() > 1:
+        return "daily"
+    if s.dt.month.nunique() > 1:
+        return "monthly"
+    return "yearly"
 
-    df.to_csv(save_path, index=False)
+
+def align_to_daily(df: pd.DataFrame) -> pd.DataFrame:
+    records = []
+
+    for _, row in df.iterrows():
+        d = row["date"]
+
+        # monthly
+        start = d.replace(day=1)
+        end = start + pd.offsets.MonthEnd(0)
+
+        for day in pd.date_range(start, end, freq="D"):
+            r = row.copy()
+            r["date"] = day
+            records.append(r)
+
+    return pd.DataFrame(records)
+
+
+def merge_dataframes(
+    left: pd.DataFrame,
+    right: pd.DataFrame,
+    on: str,
+    how: str = "left",
+    save_path: str | Path = None,
+    drop: bool = False
+):
+    left = left.copy()
+    merged = pd.merge(left, right, on=on, how=how)
+
+    if drop:
+        merged = merged.drop(columns=[on])
+
+    if save_path:
+        merged.to_csv(save_path, index=False)
+
+    return merged
 
 
 if __name__ == '__main__':
-    from config import RAW_DIR
-
-    verbose=True
-    train_sample = load_random_train_sample(
-        RAW_DIR / "train",
-    )
-
-    # print(train_sample.iloc[1,1])
-
-    train_columns = check_columns_consistency(RAW_DIR / "train")
-    print(f"\nFound {len(train_columns)} unique column structures in raw train\n")
-
-    for i, (cols, files) in enumerate(train_columns.items(), 1):
-        print(f"[Structure {i}]")
-        print(f"Columns ({len(cols)}): {cols}")
-        print(f"Used by {len(files)} files")
-        print("-" * 90, end='\n\n')
-
-    test_columns = check_columns_consistency(RAW_DIR/'test')
-    print(f"Found {len(test_columns)} unique column structures in raw test\n")
-
-    for i, (cols, files) in enumerate(test_columns.items(), 1):
-        print(f"[Structure {i}]")
-        print(f"Columns ({len(cols)}): {cols}")
-        print(f"Used by {len(files)} files")
-        print("-" * 90)
+    main3()

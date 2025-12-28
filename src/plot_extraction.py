@@ -19,7 +19,7 @@ import os
 from pathlib import Path
 
 # Helper: clean column names from dataset preparation
-from src.dataset import clean_column_names
+from src.dataset_builder import clean_column_names
 
 # Computer vision library
 import cv2

@@ -4,27 +4,23 @@ filterwarnings('ignore')
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
-from sklearn.impute import SimpleImputer
 from sklearn.compose import TransformedTargetRegressor
-from sklearn.metrics import mean_squared_error, mean_absolute_error
-from sklearn.base import BaseEstimator, RegressorMixin, clone
 
-from xgboost import XGBRegressor, XGBClassifier
-from sklearn.model_selection import TimeSeriesSplit, cross_val_score
+from sklearn.base import (
+    BaseEstimator,
+    RegressorMixin,
+    clone
+)
+
+from xgboost import (
+    XGBRegressor,
+    XGBClassifier
+)
 
 import pandas as pd
 import numpy as np
-import joblib
-from pathlib import Path
 
-from src.config import (
-    CLEAN_DIR,
-    MODEL_DIR,
-    PROCESS_DIR,
-    RAIN_EXTREME_COLUMNS,
-    METEOROGICAL_COLUMNS
-)
-
+from src.config import config
 from src.features import (
     TimeFeatures,
     TemperatureFeatures,
@@ -95,7 +91,8 @@ def build_preprocessor():
         transformers=[
             ("cat", OneHotEncoder(handle_unknown="ignore"), ['location']),
             ("num", "passthrough",
-             METEOROGICAL_COLUMNS + RAIN_EXTREME_COLUMNS),
+            config.features.rain_extreme_columns +
+            config.features.meteorogical_columns),
         ],
         remainder="drop"
     )
@@ -103,17 +100,6 @@ def build_preprocessor():
 
 def build_classifier(xgb_params=None):
     default_params = dict(
-        # objective="binary:logistic",
-        # scale_pos_weight=1.0,
-        # n_estimators=500,
-        # learning_rate=0.05,
-        # max_depth=4,
-        # min_child_weight=5,
-        # subsample=0.8,
-        # colsample_bytree=0.8,
-        # eval_metric="logloss",
-        # random_state=42,
-        # n_jobs=-1
         objective="binary:logistic",
         scale_pos_weight=1.25,
         max_depth=3,
@@ -226,41 +212,3 @@ def inference_data(
         return result
 
     return preds
-
-if __name__ == '__main__':
-    print("Loading data...")
-    train = pd.read_csv(CLEAN_DIR / "train_1226.csv")
-
-    train.sort_values(["date", "location"], inplace=True)
-
-    X = train.drop(columns=["daily_rainfall_total_mm"])
-    y = (train["daily_rainfall_total_mm"].fillna(0) == 0).astype(int)
-
-    pipe = build_pipeline(model_type='classifier')
-
-    tscv = TimeSeriesSplit(n_splits=5)
-
-    print("Cross validating...")
-    # scores = cross_val_score(
-    #     pipe,
-    #     X,
-    #     y,
-    #     cv=tscv,
-    #     scoring="neg_mean_squared_error",
-    #     n_jobs=-1
-    # )
-    # print("MSE per fold:", -scores)
-    # print("Mean MSE:", -scores.mean())
-
-    # print(mean_squared_error(pipe.predict(X), y))
-    # print(mean_absolute_error(pipe.predict(X), y))
-
-    pipe.fit(X, y)
-    from sklearn.metrics import accuracy_score, classification_report
-
-    proba = pipe.predict_proba(X)[:, 1]
-
-    for t in [0.35, 0.45, 0.55, 0.65]:
-        y_pred = (proba >= t).astype(int)
-        print(f"\nThreshold = {t}")
-        print(classification_report(y_val, y_pred))

@@ -1,7 +1,5 @@
-# src/schema.py
 from pydantic import BaseModel
 from typing import Optional, List
-
 
 class RandomRequest(BaseModel):
     location: str
