@@ -1,0 +1,127 @@
+<style>
+* {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+                 Roboto, Helvetica, Arial, sans-serif;
+    box-sizing: border-box;
+}
+
+.kpi-wrapper {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+    margin-bottom: 16px;
+}
+
+.kpi-card {
+    background: #f8fafc;
+    border-radius: 16px;
+    padding: 20px 18px;
+    text-align: center;
+}
+
+.kpi-label {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #64748b;
+    margin-bottom: 6px;
+}
+
+.kpi-value {
+    font-size: 2rem;
+    font-weight: 600;
+    color: #0f172a;
+    margin-bottom: 4px;
+    letter-spacing: -0.02em;
+}
+
+.kpi-unit {
+    font-size: 0.75rem;
+    color: #94a3b8;
+}
+
+.kpi-sub {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    margin-top: 2px;
+}
+
+.kpi-note {
+    margin-top: 8px;
+    font-size: 0.85rem;
+    color: #475569;
+    line-height: 1.4;
+}
+
+.kpi-callout {
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px dashed rgba(15, 23, 42, 0.15);
+    font-size: 0.8rem;
+    color: #475569;
+    text-align: center;
+}
+
+.kpi-callout-label {
+    font-weight: 600;
+    color: #334155;
+}
+</style>
+
+<div class="kpi-wrapper">
+    <div class="kpi-card">
+        <div class="kpi-label">Locations Covered</div>
+        <div class="kpi-value" data-target="{{ locations_covered }}">0</div>
+        <div class="kpi-sub">Monitoring stations</div>
+    </div>
+
+    <div class="kpi-card">
+        <div class="kpi-label">Evaluation Records</div>
+        <div class="kpi-value" data-target="{{ evaluation_records }}">0</div>
+        <div class="kpi-sub">Historical daily data</div>
+    </div>
+
+    <div class="kpi-card">
+        <div class="kpi-label">Mean Absolute Error</div>
+        <div class="kpi-value" data-target="{{ mae }}">0</div>
+        <div class="kpi-unit">mm</div>
+    </div>
+
+    <div class="kpi-card">
+        <div class="kpi-label">Root Mean Squared Error</div>
+        <div class="kpi-value" data-target="{{ rmse }}">0</div>
+        <div class="kpi-unit">mm</div>
+    </div>
+</div>
+
+<div class="kpi-callout">
+    <span class="kpi-callout-label"></span>
+    The model shows an average error of <b>{{ mae }} mm</b>, with higher
+    deviations during extreme rainfall (RMSE: <b>{{ rmse }} mm</b>).
+    Although trained on a large-scale dataset (416k samples), model performance
+    is bounded by inaccuracies in the computer vision point detector, particularly
+    during high-density rainfall regions, limiting achievable predictive accuracy.
+</div>
+
+<div class="kpi-callout">
+    <span class="kpi-callout-label"></span>
+
+</div>
+
+<script>
+document.querySelectorAll('.kpi-value[data-target]').forEach(el => {
+    const target = Number(el.dataset.target);
+    let current = 0;
+    const step = Math.max(0.5, target / 40);
+
+    function tick() {
+        current += step;
+        if (current >= target) {
+            el.textContent = target.toFixed(2).replace(/\.00$/, "");
+        } else {
+            el.textContent = current.toFixed(1);
+            requestAnimationFrame(tick);
+        }
+    }
+    tick();
+});
+</script>

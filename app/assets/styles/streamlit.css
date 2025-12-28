@@ -1,0 +1,61 @@
+header {
+    visibility: hidden;
+}
+footer {
+    visibility: hidden;
+}
+
+div[data-testid="stAppViewContainer"] {
+    padding-top: 0rem;
+}
+
+.stApp {
+    background: linear-gradient(
+        180deg,
+        #0f172a 0%,
+        #020617 100%
+    );
+    padding-top: 0;
+}
+
+.block-container {
+    margin-top: 4rem;
+    margin-bottom: 4rem;
+
+    margin-left: 4rem;
+    margin-right: 4rem;
+
+    padding-top: 0rem;
+    padding-bottom: 2.5rem;
+
+    padding-left: 3rem;
+    padding-right: 3rem;
+
+    max-width: 1100px;
+
+    border-radius: 24px;
+    background: rgba(238, 242, 255, 0.85);
+}
+
+h1 {
+    margin-top: 0;
+    padding-top: 0;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    text-align: center;
+}
+
+h3 {
+    margin-top: 0;
+    padding-top: 0;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    text-align: center;
+}
+
+.custom-footer {
+    text-align: center;
+    padding: 1rem;
+    color: #888;
+    font-size: 0.85rem;
+}

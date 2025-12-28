@@ -1,0 +1,10 @@
+.result-card.warning {
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+}
+
+.warning-text {
+    margin-top: 0.75rem;
+    color: #9a3412;
+    font-size: 14px;
+}

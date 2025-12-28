@@ -1,0 +1,32 @@
+<div class="result-card">
+    <div class="result-label">Evaluation Result for {{ location }} on {{ date }}</div>
+
+    <div class="result-main">
+
+        <div class="metric">
+            <div class="metric-label">Predicted</div>
+            <div class="metric-value predicted">
+                {{ rainfall_mm }} mm
+            </div>
+        </div>
+
+        <div class="metric">
+            <div class="metric-label">Observed</div>
+            <div class="metric-value observed">
+                {{ obs_rainfall_mm }} mm
+            </div>
+        </div>
+
+        <div class="metric">
+            <div class="metric-label">Relative Error</div>
+            <div class="metric-value error {{ error_level }}">
+                {{ error_pct }}%
+            </div>
+        </div>
+
+    </div>
+
+    <div class="evaluation-insight">
+        {{ insight_text }}
+    </div>
+</div>

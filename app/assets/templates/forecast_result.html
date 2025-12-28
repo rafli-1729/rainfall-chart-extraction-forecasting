@@ -1,0 +1,18 @@
+<div class="result-card">
+  <div class="forecast-hero">
+    <div class="forecast-title">Forecasted Daily Rainfall for {{ location }} on {{ date }}</div>
+    <div class="forecast-value">{{ rainfall_mm }} mm</div>
+
+    <div class="badge badge-{{ intensity_level }}">
+      {{ intensity_label }}
+    </div>
+  </div>
+
+  <div class="forecast-insight">
+    {{ insight_text }}
+  </div>
+
+  <div class="result-disclaimer">
+    Forecast is based on recent weather patterns and may change as new data becomes available.
+  </div>
+</div>
