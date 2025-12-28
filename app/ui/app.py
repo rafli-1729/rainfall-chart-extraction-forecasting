@@ -1,13 +1,10 @@
 from pathlib import Path
 import sys
+import os
 from dotenv import load_dotenv
 
-ROOT = Path(__file__).resolve().parents[2]
-
-load_dotenv(dotenv_path=ROOT / ".env")
-
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+load_dotenv()
+sys.path.append(os.getenv("PYTHONPATH"))
 
 import streamlit as st
 import requests
@@ -15,8 +12,6 @@ import json
 import uuid
 import duckdb
 import re
-
-import os
 
 from datetime import timedelta, datetime
 import pandas as pd
@@ -276,17 +271,17 @@ st.caption("Test the rainfall prediction model using different modes and inputs.
 
 col1, col2, col3 = st.columns([1, 1, 2])
 
-with col3:
-    mode = st.selectbox(
-        "Select Mode",
-        ["Evaluation", "Forecast", "Random Scenario"],
-    )
-
 with col1:
     location = st.selectbox("Location", config.features.locations)
 
 with col2:
     date = st.date_input("Date")
+
+with col3:
+    mode = st.selectbox(
+        "Select Mode",
+        ["Evaluation", "Forecast", "Random Scenario"],
+    )
 
 date_str = date.strftime("%Y-%m-%d")
 date_formatted = date.strftime("%d %b %Y")
@@ -316,7 +311,7 @@ if mode == 'Random Scenario':
     with col2:
         max_wind = st.number_input("Max Wind Speed (km/h)", 0.0, 100.0, 15.0)
 
-    if st.button("Run Scenario", width=1100, type='primary'):
+    if st.button("Predict", width=1100, type='primary'):
         payload = {
             "features": {
                 "location": location,
@@ -429,7 +424,7 @@ if mode == 'Evaluation':
     if not is_valid:
         st.warning(error_msg)
 
-    if st.button("Run Evaluation", disabled=not is_valid, width=1100, type='primary'):
+    if st.button("Evaluate", disabled=not is_valid, width=1100, type='primary'):
         payload = {
             "location": location,
             "date": selected_date.strftime("%Y-%m-%d")

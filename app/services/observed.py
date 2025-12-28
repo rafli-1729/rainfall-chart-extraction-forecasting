@@ -1,8 +1,14 @@
 import requests
 import pandas as pd
 import numpy as np
+import os
+import sys
 
-from src.config import PROJECT_ROOT
+from dotenv import load_dotenv
+load_dotenv()
+sys.path.append(os.getenv('PYTHONPATH'))
+
+from src.config import config
 
 def _get_nea_rainfall_raw(date: str) -> pd.DataFrame:
     url = "https://api.data.gov.sg/v1/environment/rainfall"
@@ -26,9 +32,6 @@ def _get_nea_rainfall_raw(date: str) -> pd.DataFrame:
 
 
 def _get_nea_stations() -> pd.DataFrame:
-    """
-    Returns NEA rainfall station metadata.
-    """
     url = "https://api.data.gov.sg/v1/environment/rainfall"
     r = requests.get(url, timeout=10)
     r.raise_for_status()
@@ -56,8 +59,8 @@ def _haversine(lat1, lon1, lat2, lon2):
 
 def get_observed_daily_rainfall(location: str, date: str) -> pd.DataFrame:
     # load location mapping
-    mapping = pd.read_csv(PROJECT_ROOT / "data" / "locations.csv")
-    row = mapping.loc[mapping["location"] == location]
+    mapping = pd.read_json(config.paths.metadata / "stations.json")
+    row = mapping.loc[mapping["station_name"] == location]
 
     if row.empty:
         raise ValueError(f"Unknown location: {location}")
@@ -103,72 +106,5 @@ def get_observed_daily_rainfall(location: str, date: str) -> pd.DataFrame:
 
 
 if __name__=='__main__':
-    from tqdm import tqdm
-
-    observed = get_observed_daily_rainfall(location='Bukit_Panjang', date='2021-07-12')
-
-    mapping = pd.read_csv(PROJECT_ROOT / "src" / "locations.csv")
-    location_coords = {
-        row["location"]: (row["latitude"], row["longitude"])
-        for _, row in mapping.iterrows()
-    }
-
-    def get_observed_rainfall_batch(test_df: pd.DataFrame) -> dict:
-        """
-        Returns:
-        {(date, location): daily_rainfall_mm}
-        """
-        results = {}
-
-        unique_dates = sorted(test_df["date"].dt.strftime("%Y-%m-%d").unique())
-
-        for date in tqdm(unique_dates, desc="Fetching NEA per date"):
-            # 1 request per date
-            rain_raw = _get_nea_rainfall_raw(date)
-
-            rain_raw["date"] = rain_raw["timestamp"].dt.date
-            daily_rain = (
-                rain_raw.groupby("station_id", as_index=False)
-                .agg(daily_rainfall_total_mm=("rainfall_mm", "sum"))
-            )
-
-            stations = _get_nea_stations()
-            df = daily_rain.merge(stations, on="station_id", how="left")
-
-            # expand location dict
-            loc_df = pd.json_normalize(df["location"])
-            df["latitude"] = loc_df["latitude"]
-            df["longitude"] = loc_df["longitude"]
-
-            for location, (lat, lon) in location_coords.items():
-                tmp = df.copy()
-                tmp["distance_km"] = _haversine(
-                    lat, lon,
-                    tmp["latitude"], tmp["longitude"]
-                )
-                nearest = tmp.sort_values("distance_km").iloc[0]
-
-                results[(date, location)] = nearest["daily_rainfall_total_mm"]
-
-        return results
-
-
-    test = pd.read_csv(PROJECT_ROOT/'data'/'clean'/"test.csv")
-    test["date"] = pd.to_datetime(test["date"])
-    predictions = []
-    lookup = get_observed_rainfall_batch(test)
-
-    test["prediksi"] = [
-        lookup[(row["date"].strftime("%Y-%m-%d"), row["location"])]
-        for _, row in test.iterrows()
-    ]
-
-    test["tahun"] = test["date"].dt.year
-    test["bulan"] = test["date"].dt.month
-    test["hari"] = test["date"].dt.day
-
-    submission = test.rename(columns={
-        "location": "ID"
-    })[["ID", "tahun", "bulan", "hari", "prediksi"]]
-
-    submission.to_csv("submission.csv", index=False)
+    test = get_observed_daily_rainfall("Admiralty", "2025-01-01")
+    print(test)

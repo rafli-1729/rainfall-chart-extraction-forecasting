@@ -89,15 +89,15 @@ def build_feature_row(lat, lon, location, date):
 
 
 def build_features_from_api(location, date):
-    mapping = pd.read_csv(config.paths.data/'locations.csv')
+    mapping = pd.read_json(config.paths.metadata/'stations.json')
 
     latitude = (
-        mapping.loc[mapping['location'] == location, 'latitude']
+        mapping.loc[mapping['station_name'] == location, 'latitude']
             .iloc[0]
     )
 
     longitude = (
-        mapping.loc[mapping['location'] == location, 'longitude']
+        mapping.loc[mapping['station_name'] == location, 'longitude']
             .iloc[0]
     )
 
