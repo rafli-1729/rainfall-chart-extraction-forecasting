@@ -59,17 +59,5 @@ y_pred = pipe.predict(X)
 print("Mean Absolute Error :", mean_absolute_error(y, y_pred))
 print("Mean Squared Error  :", mean_squared_error(y, y_pred))
 
-test = pd.read_csv(CLEAN_DIR / "test.csv")
-
-test['prediksi'] = pipe.predict(test.drop(columns=['daily_rainfall_total_mm']))
-test['date'] = pd.to_datetime(test['date'])
-test['tahun'] = test['date'].dt.year
-test['bulan'] = test['date'].dt.month
-test['hari'] = test['date'].dt.day
-test['ID (kota)'] = (
-    test['location'].str.lower() + "_" + test['date'].dt.strftime("%Y_%m_%d")
-)
-
-test[['ID (kota)', 'tahun', 'bulan', 'hari', 'prediksi']].to_csv(INFERENCE_DIR/'submission_1226.csv', index=False)
-# joblib.dump(pipe, MODEL_DIR/'xgb_model_1226.pkl')
-# print("Model saved!")
+joblib.dump(pipe, MODEL_DIR/'xgb_model_1226.pkl')
+print("Model saved!")
