@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    {{CSS}}
+  </style>
+</head>
+
+<body>
+  <div class="chart-card">
+    <div class="chart-header">
+      <div class="chart-title">{{TITLE}}</div>
+      <div class="chart-subtitle">{{SUBTITLE}}</div>
+    </div>
+
+    <div id="chart"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
+
+  <script>
+    window.__ERROR_CHART_PAYLOAD__ = {{PAYLOAD_JSON}};
+  </script>
+
+  <script>
+    {{JS}}
+  </script>
+</body>
+</html>

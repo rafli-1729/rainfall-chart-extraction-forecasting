@@ -81,3 +81,81 @@ SELECT
           / baseline_extreme_mae
         AS extreme_improvement_pct
 FROM metrics;
+
+
+-- name: plot_error
+SELECT
+    date,
+    ABS(cv_predicted_mm - extracted_mm) AS abs_error
+FROM weekly_rainfall
+WHERE location = ?
+  AND EXTRACT(YEAR FROM date) = ?
+  AND cv_predicted_mm IS NOT NULL
+  AND extracted_mm IS NOT NULL
+ORDER BY date;
+
+
+-- name: error_distribution
+SELECT
+    ABS(cv_predicted_mm - extracted_mm) AS abs_error
+FROM daily_rainfall
+WHERE location = ?
+  AND EXTRACT(YEAR FROM date) = ?
+  AND cv_predicted_mm IS NOT NULL
+  AND extracted_mm IS NOT NULL;
+
+
+-- name: extreme_day_error
+WITH base AS (
+    SELECT
+        date,
+        extracted_mm,
+        cv_predicted_mm,
+        ABS(cv_predicted_mm - extracted_mm) AS abs_error
+    FROM daily_rainfall
+    WHERE location = ?
+      AND EXTRACT(YEAR FROM date) = ?
+      AND cv_predicted_mm IS NOT NULL
+      AND extracted_mm IS NOT NULL
+),
+threshold AS (
+    SELECT quantile(extracted_mm, 0.9) AS p90
+    FROM base
+)
+SELECT
+    date,
+    extracted_mm,
+    abs_error
+FROM base, threshold
+WHERE extracted_mm >= p90
+ORDER BY date;
+
+
+-- name: weekly_timeseries
+SELECT
+    date,
+    observed_mm,
+    extracted_mm,
+    cv_predicted_mm,
+    ABS(cv_predicted_mm - extracted_mm) AS abs_error
+FROM weekly_rainfall
+WHERE location = ?
+  AND EXTRACT(YEAR FROM date) = ?
+  AND extracted_mm IS NOT NULL
+  AND cv_predicted_mm IS NOT NULL
+ORDER BY date;
+
+
+-- name: daily_timeseries
+SELECT
+    date,
+    observed_mm,
+    extracted_mm,
+    cv_predicted_mm,
+    ABS(cv_predicted_mm - extracted_mm) AS abs_error
+FROM daily_rainfall
+WHERE location = ?
+  AND EXTRACT(YEAR FROM date) = ?
+  AND extracted_mm IS NOT NULL
+  AND cv_predicted_mm IS NOT NULL
+ORDER BY date;

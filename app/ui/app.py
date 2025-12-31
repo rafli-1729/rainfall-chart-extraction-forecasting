@@ -17,19 +17,23 @@ from datetime import timedelta
 import pandas as pd
 from streamlit.components.v1 import html
 
+from render import (
+    load_styles,
+    render_component,
+    load_html,
+)
+
 from utils import (
     today_sg,
-    render_templates,
-    load_styles,
     evaluate_prediction,
     rainfall_intensity,
     forecast_insight_text,
     scenario_insight_text,
-    load_html,
     build_line_chart_payload,
-    render_component,
+    build_error_chart_payload,
+    build_timeseries_payload,
     kpi_value,
-    format_baseline
+    format_baseline,
 )
 
 from src.config import config
@@ -65,7 +69,7 @@ load_styles(config.paths.styles)
 
 st.title("Rainfall Forecasting Dashboard")
 
-render_templates(config.paths.templates/'divider.html')
+st.markdown(load_html(config.paths.templates/'divider.html'), unsafe_allow_html=True)
 
 # ============================== DASHBOARD =============================
 
@@ -143,11 +147,18 @@ with col2:
 
 available_years = con.execute(global_sql["available_years"]).fetchall()
 
-plot_df = con.execute(
-    global_sql['melt_df'],
-    [str(selected_location),
-     int(selected_year)]
+weekly_df = con.execute(
+    year_sql["weekly_timeseries"],
+    [selected_location, selected_year]
 ).df()
+
+daily_df = con.execute(
+    year_sql["daily_timeseries"],
+    [selected_location, selected_year]
+).df()
+
+weekly_df["date"] = pd.to_datetime(weekly_df["date"])
+daily_df["date"] = pd.to_datetime(daily_df["date"])
 
 (
     year_mae, year_rmse,
@@ -159,6 +170,19 @@ plot_df = con.execute(
     [str(selected_location),
     int(selected_year), epsilon]
 ).fetchone()
+
+error_df = con.execute(
+    year_sql['plot_error'],
+    [str(selected_location),
+    int(selected_year)]
+).df()
+
+
+error_distribution = con.execute(
+    year_sql["error_distribution"],
+    [str(selected_location),
+    int(selected_year)]
+).df()
 
 
 (
@@ -245,17 +269,100 @@ render_component(
     year_extreme_baseline_class=year_extreme_baseline_class
 )
 
-payload = build_line_chart_payload(plot_df)
+payload_ts = build_timeseries_payload(
+    weekly_df,
+    series_map={
+        "Observed": "observed_mm",
+        "Extracted": "extracted_mm",
+        "Predicted": "cv_predicted_mm",
+    }
+)
+
+calibration_df = daily_df[["extracted_mm", "cv_predicted_mm"]].dropna()
+
+payload_calibration = {
+    "x": calibration_df["extracted_mm"].astype(float).tolist(),
+    "y": calibration_df["cv_predicted_mm"].astype(float).tolist()
+}
+
+col1, col2 = st.columns([2, 1])
+with col1:
+    render_component(
+        html_path=assets_dir / "chart/line.html",
+        css_path=assets_dir / "chart/style.css",
+        js_path=assets_dir / "chart/line.js",
+        height=300,
+        PAYLOAD_JSON=json.dumps(payload_ts),
+        TITLE="Average Weekly Rainfall Trend",
+        SUBTITLE=f"{selected_location} • {selected_year}"
+    )
+
+with col2:
+    render_component(
+        html_path=assets_dir / "chart/calibration.html",
+        css_path=assets_dir / "chart/style.css",
+        js_path=assets_dir / "chart/calibration.js",
+        height=300,
+        PAYLOAD_JSON=json.dumps(payload_calibration),
+        TITLE="Predicted vs Extracted",
+        SUBTITLE=f"{selected_location} • {selected_year}"
+    )
+
+payload_error = {
+    "dates": weekly_df["date"].dt.strftime("%Y-%m-%d").tolist(),
+    "bias": (weekly_df["cv_predicted_mm"] - weekly_df["extracted_mm"]).tolist()
+}
 
 render_component(
-    html_path=assets_dir / "chart/index.html",
+    html_path=assets_dir / "chart/error.html",
     css_path=assets_dir / "chart/style.css",
-    js_path=assets_dir / "chart/script.js",
+    js_path=assets_dir / "chart/error.js",
     height=300,
-    PAYLOAD_JSON=json.dumps(payload),
-    TITLE="Recent Rainfall Trend",
+    PAYLOAD_JSON=json.dumps(payload_error),
+    TITLE="Average Weekly Bias",
     SUBTITLE=f"{selected_location} • {selected_year}"
 )
+
+p90 = weekly_df["extracted_mm"].quantile(0.9)
+
+extreme_df = weekly_df[daily_df["extracted_mm"] >= p90]
+payload_extreme = build_timeseries_payload(
+    extreme_df,
+    series_map={
+        "Extreme Error": "abs_error"
+    }
+)
+
+payload_dist = {
+    "values": daily_df["abs_error"]
+        .dropna()
+        .astype(float)
+        .tolist()
+}
+
+col1, col2 = st.columns([1, 2])
+with col1:
+    render_component(
+        html_path=assets_dir / "chart/error.html",
+        css_path=assets_dir / "chart/style.css",
+        js_path=assets_dir / "chart/extreme.js",
+        height=300,
+        PAYLOAD_JSON=json.dumps(payload_extreme),
+        TITLE="Daily Extreme Error",
+        SUBTITLE=f"{selected_location} • {selected_year}"
+    )
+
+with col2:
+    render_component(
+        html_path=assets_dir / "chart/error_dist.html",
+        css_path=assets_dir / "chart/style.css",
+        js_path=assets_dir / "chart/error_dist.js",
+        height=300,
+        PAYLOAD_JSON=json.dumps(payload_dist),
+        TITLE="Daily Error Distribution",
+        SUBTITLE=f"{selected_location} • {selected_year}"
+    )
+
 
 html(load_html(config.paths.templates/'divider.html'), height=10)
 
@@ -322,7 +429,7 @@ if mode == 'Random Scenario':
 
         result_slot = st.empty()
         with result_slot:
-            render_templates(config.paths.templates/"loading.html")
+            st.markdown(load_html(config.paths.templates/'loading.html'), unsafe_allow_html=True)
 
         res = requests.post(f"{API_BASE}/random", json=payload)
 
@@ -337,13 +444,13 @@ if mode == 'Random Scenario':
         }
 
         with result_slot:
-            render_templates(
+            st.markdown(load_html(
                 config.paths.templates/"random_result.html",
                 rainfall_mm=f"{rain_mm:.1f}",
                 intensity_level=level,
                 intensity_label=label,
                 location=data["input"]["location"]
-            )
+            ), unsafe_allow_html=True)
 
 # ================================= FORECAST MODE =================================
 
@@ -376,7 +483,7 @@ if mode == 'Forecast':
 
         result_slot = st.empty()
         with result_slot:
-            render_templates(config.paths.templates/"loading.html")
+            st.markdown(load_html(config.paths.templates/'loading.html'), unsafe_allow_html=True)
 
         res = requests.post(f"{API_BASE}/forecast", json=payload)
 
@@ -387,7 +494,7 @@ if mode == 'Forecast':
         insight = forecast_insight_text(rain_mm, level)
 
         with result_slot:
-            render_templates(
+            st.markdown(load_html(
                 config.paths.templates/"forecast_result.html",
                 rainfall_mm=f"{rain_mm:.1f}",
                 intensity_level=level,
@@ -395,7 +502,7 @@ if mode == 'Forecast':
                 insight_text=insight,
                 location=data["input"]["location"],
                 date=date_formatted
-            )
+            ), unsafe_allow_html=True)
 
 
 # ================================= EVALUATION MODE =================================
@@ -425,7 +532,7 @@ if mode == 'Evaluation':
 
         result_slot = st.empty()
         with result_slot:
-            render_templates(config.paths.templates/"loading.html")
+            st.markdown(load_html(config.paths.templates/'loading.html'), unsafe_allow_html=True)
 
         res = requests.post(f"{API_BASE}/evaluate", json=payload)
         data = res.json()
@@ -439,14 +546,14 @@ if mode == 'Evaluation':
 
         with result_slot:
             if data["comparison"] is None:
-                render_templates(
+                st.markdown(load_html(
                     config.paths.templates/"evaluation_unavailable.html",
                     location=location,
                     date=date
-                )
+                ), unsafe_allow_html=True)
             else:
                 eval_result = evaluate_prediction(pred_mm, obs_mm)
-                render_templates(
+                st.markdown(load_html(
                     config.paths.templates/"evaluate_result.html",
                     rainfall_mm=f"{eval_result['predicted_mm']:.1f}",
                     obs_rainfall_mm=f"{eval_result['observed_mm']:.1f}",
@@ -455,6 +562,6 @@ if mode == 'Evaluation':
                     insight_text=eval_result["insight_text"],
                     location=location,
                     date=date_formatted
-                )
+                ), unsafe_allow_html=True)
 
-render_templates("app/assets/footer.html")
+st.markdown(load_html(assets_dir/"footer.html"), unsafe_allow_html=True)
