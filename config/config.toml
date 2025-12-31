@@ -16,6 +16,7 @@ inference_dir   = "data/inference"
 
 database_dir    = "database"
 
+assets_dir      = "app/assets"
 template_dir    = "app/assets/templates"
 style_dir       = "app/assets/styles"
 
