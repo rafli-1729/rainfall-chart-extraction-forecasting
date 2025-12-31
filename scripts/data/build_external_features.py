@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 import os
 
 from src.config import config
@@ -29,6 +30,7 @@ external_df = pd.DataFrame({"date": all_dates})
 for df in expanded_dfs:
     external_df = external_df.merge(df, on="date", how="left")
 
+external_df['date'] = pd.to_datetime(external_df['date'], format="mixed").dt.strftime("%Y-%m-%d")
 feature_map = {
     "date": "date",
     "AirQualityIndex_Google Trends" : "AQI",
@@ -38,7 +40,20 @@ feature_map = {
 }
 
 external_df.columns = external_df.columns.map(feature_map)
-external_df.to_csv(config.paths.processed/"external_features.csv", index=False)
+external_df = (external_df
+               .replace(-9999, np.nan)
+               .bfill()
+               .ffill()
+)
+
+for column in list(feature_map.values())[1:]:
+    for lag in [1, 2, 3, 6]:
+        external_df[f'{column}_lag_{lag}'] = external_df[column].shift(lag)
+    for window in [3, 6, 12]:
+        external_df[f'{column}_rolling_mean_{window}'] = external_df[column].rolling(window, min_periods=1).mean()
+
+external_df = external_df.bfill().ffill()
+external_df.to_csv(config.paths.clean/"external_features.csv", index=False)
 
 assert external_df["date"].is_unique
 assert external_df["date"].is_monotonic_increasing

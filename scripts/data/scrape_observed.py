@@ -93,6 +93,12 @@ def normalize_df(df: pd.DataFrame, station_name: str) -> pd.DataFrame:
 
     df["date"] = pd.to_datetime(df[["year", "month", "day"]])
     df["location"] = station_name
+    df["location"] = (
+        df["location"]
+        .str.replace(r"[()]", "", regex=True)
+        .str.replace(r"\s+", " ", regex=True)
+        .str.strip()
+    )
 
     final_cols = [
         "date",

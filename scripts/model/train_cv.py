@@ -9,10 +9,8 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 
-from src.config import (
-    CLEAN_DIR,
-    INFERENCE_DIR,
-)
+from src.config import config
+from src.dataset_builder import convert_numeric
 from src.model import (
     build_feature_pipeline,
     build_preprocessor,
@@ -21,20 +19,28 @@ from src.model import (
 )
 
 print("Loading data...")
-train = pd.read_csv(CLEAN_DIR / "train_1226.csv")
-print(train.shape)
-print(len(train.location.unique()))
-
-# train.dropna(inplace=True)
-print(train.shape)
-print(len(train.location.unique()))
+train = pd.read_csv(config.paths.clean / "train.csv")
+external_df = pd.read_csv(config.paths.clean/ "external_features.csv")
 
 train.sort_values(["date", "location"], inplace=True)
+
+feature_cols = (
+    config.features.meteorogical_columns +
+    config.features.rain_extreme_columns
+)
+
+mask_all_features_missing = train[feature_cols].isna().all(axis=1)
+mask_target_present = train["daily_rainfall_total_mm"].notna()
+
+mask_drop = mask_all_features_missing & mask_target_present
+
+train = train.loc[~mask_drop].reset_index(drop=True)
 
 X = train.drop(columns=["daily_rainfall_total_mm"])
 y = train["daily_rainfall_total_mm"].fillna(0)
 
-pipe = build_pipeline(model_type='two_stage')
+pipe = build_pipeline(external_df=external_df,
+                      model_type='two_stage')
 
 tscv = TimeSeriesSplit(n_splits=5)
 
@@ -44,12 +50,12 @@ scores = cross_val_score(
     X,
     y,
     cv=tscv,
-    scoring="neg_mean_squared_error",
+    scoring="neg_mean_absolute_error",
     n_jobs=-1
 )
 
-print("MSE per fold:", -scores)
-print("Mean MSE:", -scores.mean())
+print("MAE per fold:", -scores)
+print("Mean MAE:", -scores.mean())
 
 print("Fitting final model...")
 pipe.fit(X, y)
@@ -59,5 +65,5 @@ y_pred = pipe.predict(X)
 print("Mean Absolute Error :", mean_absolute_error(y, y_pred))
 print("Mean Squared Error  :", mean_squared_error(y, y_pred))
 
-joblib.dump(pipe, MODEL_DIR/'xgb_model_1226.pkl')
+joblib.dump(pipe, config.paths.models/'cv_model.pkl')
 print("Model saved!")
