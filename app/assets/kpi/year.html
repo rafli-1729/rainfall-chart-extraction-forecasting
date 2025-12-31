@@ -1,0 +1,88 @@
+<div class="kpi-context-note">
+    Model performance for <strong>{{ location }}</strong> in <strong>{{ year }}</strong>.
+    Metrics below reflect the selected location and year.
+</div>
+
+<div class="kpi-wrapper">
+
+    <div class="kpi-card">
+        <div class="kpi-label">Average Prediction Error</div>
+
+        <div class="kpi-value-row">
+            <span class="kpi-value"
+                  data-target="{{ year_mae_num }}">
+                {{ year_mae_text }}
+            </span>
+
+            <span class="kpi-baseline-inline {{ year_mae_baseline_class }}">
+                {{ year_mae_baseline_pct }}
+            </span>
+        </div>
+
+        <div class="kpi-unit">{{ year_mae_unit }}</div>
+
+        <div class="kpi-note">
+            Typical deviation between predicted and extracted rainfall values
+            for the selected year.
+        </div>
+    </div>
+
+    <div class="kpi-card">
+        <div class="kpi-label">Prediction Bias</div>
+
+        <div class="kpi-value"
+             data-target="{{ year_bias_num }}">
+            {{ year_bias_text }}
+        </div>
+
+        <div class="kpi-unit">{{ year_bias_unit }}</div>
+
+        <div class="kpi-note">
+            Indicates whether the model tends to overestimate or underestimate
+            rainfall in this year.
+        </div>
+    </div>
+
+    <div class="kpi-card">
+        <div class="kpi-label">Extreme-day Error</div>
+
+        <div class="kpi-value-row">
+            <span class="kpi-value"
+                  data-target="{{ year_extreme_num }}">
+                {{ year_extreme_text }}
+            </span>
+
+            <span class="kpi-baseline-inline {{ year_extreme_baseline_class }}">
+                {{ year_extreme_baseline_pct }}
+            </span>
+        </div>
+
+        <div class="kpi-unit">{{ year_extreme_unit }}</div>
+
+        <div class="kpi-note">
+            Average error during high-rainfall events (top percentile days).
+        </div>
+    </div>
+
+    <div class="kpi-card">
+        <div class="kpi-label">False Rain Rate</div>
+
+        <div class="kpi-value"
+             data-target="{{ year_false_rain_num }}">
+            {{ year_false_rain_text }}
+        </div>
+
+        <div class="kpi-unit">{{ year_false_rain_unit }}</div>
+
+        <div class="kpi-note">
+            Frequency of predicted rainfall on days with no extracted rainfall.
+        </div>
+    </div>
+
+</div>
+
+<div class="kpi-legend">
+    Percentage values indicate relative <strong>improvement in prediction error</strong>
+    compared to the <strong>observed-trained reference model</strong>.
+    Positive values indicate lower error.
+</div>

@@ -5,15 +5,12 @@ footer {
     visibility: hidden;
 }
 
-div[data-testid="stAppViewContainer"] {
-    padding-top: 0rem;
-}
-
 .stApp {
     background: linear-gradient(
         180deg,
         #0f172a 0%,
-        #020617 100%
+        #1c1917 85%,
+        #3f2f1f 100%
     );
     padding-top: 0;
 }
@@ -28,13 +25,13 @@ div[data-testid="stAppViewContainer"] {
     padding-top: 0rem;
     padding-bottom: 2.5rem;
 
-    padding-left: 3rem;
-    padding-right: 3rem;
+    padding-left: 2rem;
+    padding-right: 2rem;
 
     max-width: 1100px;
 
     border-radius: 24px;
-    background: rgba(238, 242, 255, 0.85);
+    background: rgba(238, 242, 255, 0.9);
 }
 
 h1 {

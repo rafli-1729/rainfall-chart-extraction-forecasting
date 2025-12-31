@@ -1,0 +1,36 @@
+<div class="kpi-note">
+    Overall model performance aggregated across all locations and years,
+    evaluated using the primary prediction model against rainfall values
+    extracted from historical charts.
+    Metrics are computed on records with complete feature availability
+    and are shown for global reference only.
+</div>
+
+<div class="kpi-strip">
+    <div class="kpi-chip" title="Average absolute difference between predicted and extracted rainfall (MAE). Lower is better.">
+        <div class="kpi-chip-label">Average Error</div>
+        <div class="kpi-chip-value kpi-value" data-target="{{ mae }}">0</div>
+        <div class="kpi-chip-unit">mm</div>
+        <div class="kpi-chip-sub">MAE</div>
+    </div>
+
+    <div class="kpi-chip" title="Penalizes large errors more heavily (RMSE). Useful for extreme rainfall days. Lower is better.">
+        <div class="kpi-chip-label">Extreme Error</div>
+        <div class="kpi-chip-value kpi-value" data-target="{{ rmse }}">0</div>
+        <div class="kpi-chip-unit">mm</div>
+        <div class="kpi-chip-sub">RMSE</div>
+    </div>
+
+    <div class="kpi-chip" title="How well predicted values track the same ups and downs as extracted values (R²). Higher suggests better pattern alignment, but does not guarantee small errors.">
+        <div class="kpi-chip-label">Pattern Match</div>
+        <div class="kpi-chip-value kpi-value" data-target="{{ r2 }}">0</div>
+        <div class="kpi-chip-sub">R²</div>
+    </div>
+
+    <div class="kpi-chip" title="Percentage of dry days (extracted = 0) where the model predicts rainfall above {{ epsilon }} mm. Lower is better.">
+        <div class="kpi-chip-label">False Rain</div>
+        <div class="kpi-chip-value kpi-value" data-target="{{ zero_rain_false_rate }}">0</div>
+        <div class="kpi-chip-unit">%</div>
+        <div class="kpi-chip-sub">&gt; {{ epsilon }} mm</div>
+    </div>
+</div>

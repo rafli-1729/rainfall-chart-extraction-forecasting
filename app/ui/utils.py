@@ -1,14 +1,13 @@
 from warnings import filterwarnings
-filterwarnings('ignore')
+filterwarnings("ignore")
 
 from zoneinfo import ZoneInfo
 from datetime import datetime, timedelta
 
+import pandas as pd
+import numpy as np
 import re
 import base64
-
-import json
-import uuid
 
 import sys
 from pathlib import Path
@@ -41,10 +40,65 @@ def set_bg(image_file):
         unsafe_allow_html=True
     )
 
-def render_template(path: str, **kwargs):
+def render_template(text: str, **kwargs) -> str:
+    for key, value in kwargs.items():
+        if value == "\n":
+            continue
+
+        text = re.sub(
+            rf"\{{\{{\s*{key}\s*\}}\}}",
+            str(value),
+            text
+        )
+
+    text = re.sub(r"\n\s*\n+", "\n", text)
+    return text
+
+
+def load_css(path: Path, **kwargs) -> str:
+    css = path.read_text(encoding="utf-8")
+    css = render_template(css, **kwargs)
+    return f"<style>{css}</style>"
+
+
+def load_js(path: Path, **kwargs) -> str:
+    js = path.read_text(encoding="utf-8")
+    js = render_template(js, **kwargs)
+    return f"<script>{js}</script>"
+
+
+def load_html(path: Path, **kwargs) -> str:
+    html = path.read_text(encoding="utf-8")
+    html = render_template(html, **kwargs)
+    return html
+
+
+def render_component(
+    *,
+    html_path: Path,
+    css_path: Path | None = None,
+    js_path: Path | None = None,
+    height: int = 300,
+    **kwargs
+):
+    parts = []
+
+    if css_path:
+        parts.append(load_css(css_path, **kwargs))
+
+    parts.append(load_html(html_path, **kwargs))
+
+    if js_path:
+        parts.append(load_js(js_path, **kwargs))
+
+    doc = "\n".join(parts)
+    html(doc, height=height, scrolling=False)
+
+
+def render_templates(path: str, **kwargs):
     html = Path(path).read_text()
     for key, value in kwargs.items():
-        if value == '\n':
+        if value == "\n":
             continue
 
         html = re.sub(
@@ -59,83 +113,61 @@ def render_template(path: str, **kwargs):
     st.markdown(html, unsafe_allow_html=True)
 
 
-def render_kpi_html(path: str, height: int = 220, **kwargs):
-    template = Path(path).read_text()
+def kpi_value(value, unit):
+    if value is None or (isinstance(value, float) and np.isnan(value)):
+        return {
+            "num": None,
+            "text": "Not Available",
+            "unit": ""
+        }
+    return {
+        "num": float(value),
+        "text": f"{value:.2f}",
+        "unit": unit
+    }
 
-    for key, value in kwargs.items():
-        template = re.sub(
-            rf"\{{\{{\s*{key}\s*\}}\}}",
-            str(value),
-            template
+
+def format_baseline(improvement_pct):
+    if improvement_pct is None:
+        return "", ""
+
+    val = float(improvement_pct)
+    if not np.isfinite(val):
+        return "", ""
+
+    text = f"{val:+.0f}%"
+    css_class = "negative" if val < 0 else ""
+
+    return text, css_class
+
+
+def build_line_chart_payload(plot_df: pd.DataFrame) -> dict:
+    df = plot_df.copy()
+
+    df["date"] = pd.to_datetime(df["date"], errors="coerce")
+    df = df.dropna(subset=["date"])
+    df = df.sort_values("date")
+
+    df["rainfall"] = pd.to_numeric(df["rainfall"], errors="coerce")
+
+    dates = df["date"].dt.strftime("%Y-%m-%d").unique().tolist()
+
+    series = {}
+    for t, g in df.groupby("type"):
+        tmp = (
+            g.assign(Date=lambda x: x["date"].dt.strftime("%Y-%m-%d"))
+             .set_index("date")
+             .reindex(dates)
         )
+        series[t] = [
+            None if pd.isna(v) else float(v)
+            for v in tmp["rainfall"].tolist()
+        ]
 
-    html(
-        template,
-        height=height,
-        scrolling=False
-    )
-
-
-def render_vega_chart(chart, insight_html: str, height=460):
-    spec = chart.to_dict()
-    spec["width"] = "container"
-    spec["autosize"] = {"type": "fit", "contains": "padding"}
-
-    chart_id = f"chart_{uuid.uuid4().hex}"
-
-    html(
-        f"""
-        <div class="chart-js-card">
-            <div id="{chart_id}" style="width: 100%;"></div>
-
-            <div class="chart-insight">
-                {insight_html}
-            </div>
-        </div>
-
-        <style>
-        .chart-js-card {{
-            font-family: -apple-system, BlinkMacSystemFont,
-                 "Segoe UI", Roboto, Helvetica,
-                 Arial, sans-serif;
-            background: rgba(238,242,255,1);
-            border-radius: 24px;
-            padding: 24px 28px 15px 28px;
-            width: 95%;
-        }}
-
-        .chart-insight {{
-            margin-top: 14px;
-            padding-top: 12px;
-            border-top: 1px dashed rgba(15,23,42,0.15);
-            font-size: 14px;
-            color: #334155;
-            line-height: 1.55;
-        }}
-
-        .chart-insight b {{
-            color: #0f172a;
-            font-weight: 600;
-        }}
-        </style>
-
-        <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
-        <script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
-        <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
-
-        <script>
-        vegaEmbed("#{chart_id}", {json.dumps(spec)}, {{
-            actions: false,
-            renderer: "svg"
-        }});
-        </script>
-        """,
-        height=height,
-        scrolling=False
-    )
+    return {"dates": dates, "series": series}
 
 
-def load_css(folder: str):
+def load_styles(folder: str):
     css = ""
 
     for css_file in sorted(Path(folder).glob("*.css")):
@@ -151,13 +183,13 @@ def evaluate_prediction(pred, obs, eps=1.0):
 
     if diff > 0:
         direction = "overprediction"
-        direction_text = "Predicted rainfall is higher than observed."
+        direction_text = "Predicted Rainfall is higher than observed."
     elif diff < 0:
         direction = "underprediction"
-        direction_text = "Predicted rainfall is lower than observed."
+        direction_text = "Predicted Rainfall is lower than observed."
     else:
         direction = "exact"
-        direction_text = "Prediction closely matches observed rainfall."
+        direction_text = "Prediction closely matches observed Rainfall."
 
     if obs <= 5:
         regime = "drizzle"
@@ -185,14 +217,13 @@ def evaluate_prediction(pred, obs, eps=1.0):
         else:
             severity = "moderate"
             severity_text = (
-                "Relative deviation appears large, but absolute rainfall remains low."
+                "Relative deviation appears large, but absolute Rainfall remains low."
             )
 
     else:
-        # moderate & heavy rain
         if rel_error_pct <= 20:
             severity = "low"
-            severity_text = "Prediction is highly reliable for this rainfall level."
+            severity_text = "Prediction is highly reliable for this Rainfall level."
         elif rel_error_pct <= 50:
             severity = "moderate"
             severity_text = (
@@ -201,7 +232,7 @@ def evaluate_prediction(pred, obs, eps=1.0):
         else:
             severity = "high"
             severity_text = (
-                "Prediction deviates substantially from observed rainfall."
+                "Prediction deviates substantially from observed Rainfall."
             )
 
     insight_text = (
@@ -234,27 +265,27 @@ def rainfall_intensity(rain_mm: float):
 
 def forecast_insight_text(rain_mm: float, intensity_level: str) -> str:
     if intensity_level == "drizzle":
-        return "Minimal rainfall is expected. No significant impact is anticipated under typical conditions."
+        return "Minimal Rainfall is expected. No significant impact is anticipated under typical conditions."
     if intensity_level == "light":
-        return "Light rainfall is expected. Conditions may feel damp, but impacts are generally limited."
+        return "Light Rainfall is expected. Conditions may feel damp, but impacts are generally limited."
     if intensity_level == "moderate":
-        return "Moderate rainfall is expected. Consider short-term planning impacts, especially around commute hours."
-    return "Heavy rainfall is expected. Be alert for localized flooding risk and changing conditions."
+        return "Moderate Rainfall is expected. Consider short-term planning impacts, especially around commute hours."
+    return "Heavy Rainfall is expected. Be alert for localized flooding risk and changing conditions."
 
 
 def scenario_insight_text(rain_mm: float, intensity_level: str) -> str:
     if intensity_level == "drizzle":
-        return "Under the specified inputs, the model indicates minimal rainfall. This reflects a low-rain response scenario."
+        return "Under the specified inputs, the model indicates minimal Rainfall. This reflects a low-rain response scenario."
     if intensity_level == "light":
-        return "Under the specified inputs, the model predicts light rainfall. This scenario suggests mild rain conditions."
+        return "Under the specified inputs, the model predicts light Rainfall. This scenario suggests mild rain conditions."
     if intensity_level == "moderate":
-        return "Under the specified inputs, the model predicts moderate rainfall. This scenario can affect short-term activity planning."
-    return "Under the specified inputs, the model predicts heavy rainfall. This scenario indicates elevated rain intensity."
+        return "Under the specified inputs, the model predicts moderate Rainfall. This scenario can affect short-term activity planning."
+    return "Under the specified inputs, the model predicts heavy Rainfall. This scenario indicates elevated rain intensity."
 
 
 def render_evaluation_page():
     st.header("Evaluation results")
-    st.caption("Observed vs predicted rainfall")
+    st.caption("Observed vs predicted Rainfall")
 
     # SEMI DASHBOARD
     col1, col2, col3 = st.columns(3)

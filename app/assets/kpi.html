@@ -8,8 +8,9 @@
 .kpi-wrapper {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 20px;
-    margin-bottom: 16px;
+    gap: 25px;
+    margin-bottom: 1px;
+    align-items: start;
 }
 
 .kpi-card {
@@ -17,6 +18,8 @@
     border-radius: 16px;
     padding: 20px 18px;
     text-align: center;
+    margin-left: -0.5rem;
+    margin-right: -0.5rem;
 }
 
 .kpi-label {
@@ -67,44 +70,61 @@
 }
 </style>
 
+<p style="font-size:0.85rem;color:#64748b;margin-bottom:12px;">
+Model performance metrics comparing predicted rainfall values
+against rainfall extracted from historical charts.
+</p>
+
 <div class="kpi-wrapper">
     <div class="kpi-card">
-        <div class="kpi-label">Locations Covered</div>
+        <div class="kpi-label">Locations Evaluated</div>
         <div class="kpi-value" data-target="{{ locations_covered }}">0</div>
-        <div class="kpi-sub">Monitoring stations</div>
+        <div class="kpi-sub">Rainfall stations included</div>
+
+        <div class="kpi-note">
+            Model performance is evaluated across multiple monitoring locations.
+        </div>
     </div>
 
     <div class="kpi-card">
-        <div class="kpi-label">Evaluation Records</div>
+        <div class="kpi-label">Evaluation Samples</div>
         <div class="kpi-value" data-target="{{ evaluation_records }}">0</div>
-        <div class="kpi-sub">Historical daily data</div>
+        <div class="kpi-sub">Daily observations</div>
+
+        <div class="kpi-note">
+            Each record represents a daily rainfall value extracted from charts.
+        </div>
     </div>
 
     <div class="kpi-card">
-        <div class="kpi-label">Mean Absolute Error</div>
+        <div class="kpi-label">Average Prediction Error</div>
         <div class="kpi-value" data-target="{{ mae }}">0</div>
         <div class="kpi-unit">mm</div>
+
+        <div class="kpi-note">
+            On average, model predictions differ from extracted rainfall values
+            by this amount.
+        </div>
+
+        <div class="kpi-callout">
+            <span class="kpi-callout-label">Metric:</span> Mean Absolute Error
+        </div>
     </div>
 
     <div class="kpi-card">
-        <div class="kpi-label">Root Mean Squared Error</div>
+        <div class="kpi-label">Error on Extreme Days</div>
         <div class="kpi-value" data-target="{{ rmse }}">0</div>
         <div class="kpi-unit">mm</div>
+
+        <div class="kpi-note">
+            Larger errors tend to occur during high-rainfall events,
+            which are penalized more heavily.
+        </div>
+
+        <div class="kpi-callout">
+            <span class="kpi-callout-label">Metric:</span> Root Mean Squared Error
+        </div>
     </div>
-</div>
-
-<div class="kpi-callout">
-    <span class="kpi-callout-label"></span>
-    The model shows an average error of <b>{{ mae }} mm</b>, with higher
-    deviations during extreme rainfall (RMSE: <b>{{ rmse }} mm</b>).
-    Although trained on a large-scale dataset (416k samples), model performance
-    is bounded by inaccuracies in the computer vision point detector, particularly
-    during high-density rainfall regions, limiting achievable predictive accuracy.
-</div>
-
-<div class="kpi-callout">
-    <span class="kpi-callout-label"></span>
-
 </div>
 
 <script>

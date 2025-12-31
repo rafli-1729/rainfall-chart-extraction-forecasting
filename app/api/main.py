@@ -16,24 +16,16 @@ from src.schema import (
     PredictionResponse
 )
 
-from src.external_features import build_external_features
 from src.config import config
 
 # ===================================== APP INIT =====================================
 
 app = FastAPI(title="Rainfall Forecasting API")
-_model = load_model(model_path=config.paths.models/'xgb_model.pkl')
+_model = load_model(model_path=config.paths.models/'obs_model.pkl')
 
 # ===================================== LOAD EXTERNAL FEATURES ONCE =====================================
 
-external_sources = {
-    "oni": pd.read_csv(config.paths.raw / "Data Eksternal/OceanicNinoIndex (ONI).csv"),
-    "dmi": pd.read_csv(config.paths.raw / "Data Eksternal/Dipole Mode Index (DMI).csv"),
-    "aqi": pd.read_csv(config.paths.raw / "Data Eksternal/AirQualityIndex_Google Trends.csv"),
-    "rh":  pd.read_csv(config.paths.raw / "Data Eksternal/RelativeHumidityMonthlyMean.csv"),
-}
-
-external_df = build_external_features(external_sources)
+external_df = pd.read_csv(config.paths.clean/'external_features.csv')
 train = pd.read_csv(config.paths.processed/'train.csv')
 test = pd.read_csv(config.paths.processed/'test.csv')
 
@@ -67,7 +59,6 @@ def random_mode(req: RandomRequest):
     return run_random_mode(
         model=_model,
         user_input=req.features,
-        external_df=external_df
     )
 
 
@@ -77,7 +68,6 @@ def forecast_mode(req: ForecastRequest):
         model=_model,
         location=req.location,
         date=req.date,
-        external_df=external_df
     )
 
 
@@ -87,7 +77,6 @@ def evaluation_mode(req: EvaluationRequest):
         model=_model,
         location=req.location,
         date=req.date,
-        external_df=external_df,
         train_df=train,
         test_df=test
     )

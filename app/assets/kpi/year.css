@@ -1,0 +1,113 @@
+* {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+                 Roboto, Helvetica, Arial, sans-serif;
+    box-sizing: border-box;
+}
+
+.kpi-wrapper {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 30px;
+    margin-bottom: 1px;
+    align-items: stretch;
+}
+
+.kpi-card {
+    background: #f8fafc;
+    border-radius: 16px;
+    padding: 20px 18px;
+    text-align: center;
+
+    margin-left: -0.5rem;
+    margin-right: -0.5rem;
+
+    background: rgb(255, 255, 255);
+    display: flex;
+    flex-direction: column;
+}
+
+.kpi-label {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #64748b;
+    margin-bottom: 6px;
+}
+
+.kpi-value {
+    font-size: 2rem;
+    font-weight: 600;
+    color: #0f172a;
+    margin-bottom: 4px;
+    letter-spacing: -0.02em;
+}
+
+.kpi-unit {
+    font-size: 0.60rem;
+    color: #94a3b8;
+}
+
+.kpi-sub {
+    font-size: 0.60rem;
+    color: #94a3b8;
+    margin-top: 2px;
+}
+
+.kpi-note {
+    margin-top: 8px;
+    font-size: 0.75rem;
+    color: #475569;
+    line-height: 1.4;
+}
+
+.mb-1-c {
+    margin-bottom: 1rem;
+    align-items: center;
+}
+
+.kpi-callout {
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px dashed rgba(15, 23, 42, 0.15);
+    font-size: 0.7rem;
+    color: #475569;
+    text-align: center;
+}
+
+.kpi-callout-label {
+    font-weight: 600;
+    color: #334155;
+}
+
+.kpi-context-note {
+    margin-top: 5px;
+    margin-bottom: 4px;
+
+    font-size: 0.75rem;
+    color: #475569;
+
+    text-align: center;
+}
+
+.kpi-value-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 8px;
+}
+
+.kpi-baseline-inline {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #16a34a;
+}
+
+.kpi-baseline-inline.negative {
+    color: #dc2626;
+}
+
+.kpi-legend {
+    margin-top: 6px;
+    font-size: 0.8rem;
+    color: #64748b;
+    text-align: center;
+}
