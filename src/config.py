@@ -23,6 +23,7 @@ class PathsConfig:
         self.models     = _resolve(data["models_dir"])
         self.database   = _resolve(data["database_dir"])
 
+        self.assets  = _resolve(data["assets_dir"])
         self.templates  = _resolve(data["template_dir"])
         self.styles     = _resolve(data["style_dir"])
 

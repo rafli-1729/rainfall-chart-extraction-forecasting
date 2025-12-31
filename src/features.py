@@ -32,6 +32,28 @@ class StructuralWeatherImputer(BaseEstimator, TransformerMixin):
 
         return df
 
+
+class AddExternalFeatures(BaseEstimator, TransformerMixin):
+    def __init__(self, external_df: pd.DataFrame, on="date"):
+        self.external_df = external_df
+        self.on = on
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X):
+        X_ = X.copy()
+
+        X_ = X_.merge(
+            self.external_df,
+            on=self.on,
+            how="left",
+            validate="m:1"
+        )
+
+        return X_
+
+
 class LocationMedianImputer(BaseEstimator, TransformerMixin):
     def __init__(self, cols, location_col='location'):
         self.cols = cols
@@ -66,10 +88,11 @@ class TimeFeatures(BaseEstimator, TransformerMixin):
         df = X.copy()
         df["date"] = pd.to_datetime(df["date"])
 
+        df["year"] = df["date"].dt.year
         df["month"] = df["date"].dt.month
         df["day_of_week"] = df["date"].dt.dayofweek
         df["day_of_year"] = df["date"].dt.dayofyear
-        df["week_of_year"] = df["date"].dt.isocalendar().week.astype(int)
+        df["week_of_year"] = df["date"].dt.isocalendar().week.astype("Int64")
 
         return df
 
@@ -158,6 +181,14 @@ class CyclicalInteractionFeatures(BaseEstimator, TransformerMixin):
         df = X.copy()
         days = 366
 
+        df["month_sin"] = np.sin(
+            2 * np.pi * df["month"] / 12
+        )
+
+        df["month_cos"] = np.sin(
+            2 * np.pi * df["month"] / 12
+        )
+
         df["day_of_year_sin"] = np.sin(
             2 * np.pi * df["day_of_year"] / days
         )
@@ -170,15 +201,15 @@ class CyclicalInteractionFeatures(BaseEstimator, TransformerMixin):
             * df["highest_60_min_rainfall_mm"]
         )
 
-        df["oni_x_temp"] = df["feature_oni"] * df["mean_temperature_c"]
-        df["dmi_x_rainfall"] = (
-            df["feature_dmi"] * df["highest_60_min_rainfall_mm"]
+        df["ONI_x_temp"] = df["ONI"] * df["mean_temperature_c"]
+        df["DMI_x_rainfall"] = (
+            df["DMI"] * df["highest_60_min_rainfall_mm"]
         )
         df["heat_index_proxy"] = (
-            df["feature_rh"] * df["mean_temperature_c"]
+            df["RH"] * df["mean_temperature_c"]
         )
         df["aqi_x_temp_range"] = (
-            df["feature_aqi"] * df["temp_range_c"]
+            df["AQI"] * df["temp_range_c"]
         )
 
         return df

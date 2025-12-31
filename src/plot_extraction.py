@@ -49,6 +49,15 @@ def count_total_rows(input_root: str) -> int:
     return total
 
 
+def extract_blue_mask(image: np.ndarray) -> np.ndarray:
+    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    return cv2.inRange(
+        hsv,
+        np.array([100, 50, 30]),
+        np.array([130, 255, 255])
+    )
+
+
 def detect_plot_top_border(
     gray: np.ndarray,
     plot_x_start: int,
@@ -128,13 +137,7 @@ def detect_plot_side_border(
     }
 
 def find_data_boundaries(image: np.ndarray) -> dict:
-    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-
-    blue_mask = cv2.inRange(
-        hsv,
-        np.array([100, 50, 30]),
-        np.array([130, 255, 255])
-    )
+    blue_mask = extract_blue_mask(image)
 
     contours, _ = cv2.findContours(
         blue_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
@@ -212,6 +215,7 @@ def inspect_xtick_ocr(
 
     return det
 
+
 def extract_xticks_from_ocr(ocr_results, roi_x0=0):
     XTICK_PATTERN = re.compile(r"(\d{4})-(\d{2})")
     ticks = []
@@ -236,6 +240,7 @@ def extract_xticks_from_ocr(ocr_results, roi_x0=0):
 
     return ticks
 
+
 def compute_pixel_time_slope(ticks):
     xs = np.array([x for x, _, _ in ticks])
     ts = np.array([t.value for _, t, _ in ticks])
@@ -243,39 +248,11 @@ def compute_pixel_time_slope(ticks):
     a, b = np.polyfit(xs, ts, 1)
     return a, b
 
+
 def estimate_pixel_spacing(ticks):
     xs = np.array([x for x, _, _ in ticks])
     dx = np.diff(xs)
     return np.median(dx)
-
-
-def estimate_missing_left_timestamp(
-    ticks,
-    plot_border_x,
-    tolerance_ratio=0.4
-):
-    a, b = compute_pixel_time_slope(ticks)
-    pixel_spacing = estimate_pixel_spacing(ticks)
-
-    first_x, first_t, _ = ticks[0]
-
-    candidate_x = first_x - pixel_spacing
-    if candidate_x >= plot_border_x + tolerance_ratio * pixel_spacing:
-        candidate_t = pd.to_datetime(int(a * candidate_x + b))
-        return {
-            "exists": True,
-            "x": candidate_x,
-            "timestamp": candidate_t,
-            "method": "estimated_missing_tick"
-        }
-
-    border_t = pd.to_datetime(int(a * plot_border_x + b))
-    return {
-        "exists": False,
-        "x": plot_border_x,
-        "timestamp": border_t,
-        "method": "border_fallback"
-    }
 
 
 def extract_y_axis_labels(
@@ -394,30 +371,6 @@ def extract_y_axis_labels(
         l["value"]: (l["x"], l["y"])
         for l in sorted(labels, key=lambda l: l["value"])
     }
-
-def load_and_resize(image_path: str, scale: float = 1.0) -> np.ndarray:
-    image = cv2.imread(image_path)
-    if image is None:
-        raise FileNotFoundError(image_path)
-
-    if scale != 1.0:
-        image = cv2.resize(
-            image,
-            None,
-            fx=scale,
-            fy=scale,
-            interpolation=cv2.INTER_AREA
-        )
-    return image
-
-
-def extract_blue_mask(image: np.ndarray) -> np.ndarray:
-    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    return cv2.inRange(
-        hsv,
-        np.array([100, 50, 30]),
-        np.array([130, 255, 255])
-    )
 
 
 def build_y_pixel_to_value(labels: dict):
@@ -582,18 +535,13 @@ def extract_rainfall_from_plot(
     debug: bool = False
 ) -> list[float]:
     try:
-        image      = load_and_resize(image_path, scale)
-        gray       = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        image = cv2.imread(image_path)
 
         side = detect_plot_side_border(image)
 
         ocr = inspect_xtick_ocr(image, show=False)
         xticks = extract_xticks_from_ocr(ocr)
 
-        result = estimate_missing_left_timestamp(
-            xticks,
-            plot_border_x=0
-        )
         xticks_pixel = [px for px, _, _ in xticks]
 
         boundaries   = find_data_boundaries(image)
@@ -635,48 +583,3 @@ def extract_rainfall_from_plot(
         print("   boundaries :", boundaries)
         print("   labels     :", labels)
         raise
-
-
-def process_all_locations(
-    input_root: str,
-    output_dir: str,
-    verbose=True
-):
-    os.makedirs(output_dir, exist_ok=True)
-
-    total_rows = count_total_rows(input_root)
-
-    with tqdm(
-        total=total_rows,
-        desc="Extracting rainfall",
-        unit="rows"
-    ) as pbar:
-
-        for loc in os.scandir(input_root):
-            if not loc.is_dir():
-                continue
-
-            csvs = sorted(glob.glob(f"{loc.path}/*.csv"))
-            pngs = sorted(glob.glob(f"{loc.path}/*.png"))
-
-            yearly_data = []
-
-            for csv_file, png_file in zip(csvs, pngs):
-                df = clean_column_names(pd.read_csv(csv_file))
-                df["date"] = pd.to_datetime(df["date"])
-
-                rainfall = extract_rainfall_from_plot(
-                    png_file, len(df), verbose
-                )
-
-                df["daily_rainfall_total_mm"] = rainfall
-                yearly_data.append(df[["date", "daily_rainfall_total_mm"]])
-
-                pbar.update(len(df))
-
-            if yearly_data:
-                final_df = pd.concat(yearly_data, ignore_index=True)
-                final_df.to_csv(
-                    os.path.join(output_dir, f"{loc.name}.csv"),
-                    index=False
-                )

@@ -97,73 +97,6 @@ def clean_column_names(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def concatenate_csv_files(
-    input_root: str,
-    output_dir: str,
-    verbose: bool = True,
-):
-    os.makedirs(output_dir, exist_ok=True)
-
-    try:
-        city_folders = [f.name for f in os.scandir(input_root) if f.is_dir()]
-    except FileNotFoundError:
-        raise FileNotFoundError(f"Input directory not found: {input_root}")
-
-    if not city_folders:
-        if verbose:
-            logger.warning("No city folders found.")
-        return
-
-    max_city_len = max(len(c) for c in city_folders)
-
-    total_files = 0
-    total_rows = 0
-    processed_cities = 0
-
-    if verbose:
-        logger.info("Processing %d city folders...\n", len(city_folders))
-
-    for city in city_folders:
-        city_path = os.path.join(input_root, city)
-        csv_files = sorted(glob.glob(os.path.join(city_path, "*.csv")))
-
-        concatenated_df = concatenate_csv_files(csv_path, id=1)
-
-        output_path = os.path.join(output_dir, f"{city}.csv")
-        concatenated_df.to_csv(output_path, index=False)
-
-        files_count = len(csv_files)
-        rows_count = concatenated_df.shape[0]
-
-        total_files += files_count
-        total_rows += rows_count
-        processed_cities += 1
-
-        if verbose:
-            logger.info(
-                "%-*s | %4d files | %9d rows | %2d cols",
-                max_city_len,
-                city,
-                files_count,
-                rows_count,
-                merged_df.shape[1],
-            )
-
-    if verbose:
-        sep = "-" * (max_city_len + 45)
-        logger.info(
-            "\n%s\n"
-            "[SUMMARY] Cities processed : %d\n"
-            "[SUMMARY] Total files      : %d\n"
-            "[SUMMARY] Total rows       : %d\n"
-            "%s",
-            sep,
-            processed_cities,
-            total_files,
-            total_rows,
-            sep,
-        )
-
-def concatenate_csv_files(
     id: int | str ,
     input_root: str,
     output_dir: str = None,
@@ -176,9 +109,9 @@ def concatenate_csv_files(
     dfs = []
     for f in csv_files:
         df = clean_column_names(pd.read_csv(f))
-        city = os.path.splitext(os.path.basename(f))[0]
+        filename = os.path.splitext(os.path.basename(f))[0]
 
-        df[f'source_{id}'] = city
+        df[id] = filename
         dfs.append(df)
 
     merged_df = pd.concat(dfs, ignore_index=True)
@@ -187,59 +120,6 @@ def concatenate_csv_files(
         merged_df.to_csv(output_dir, index=False)
 
     return merged_df
-
-
-def build_training_dataset(
-    features_dir: str | Path,
-    targets_dir: str | Path,
-    output_csv: str | Path,
-    corrupt_col: list,
-    verbose: bool = True
-) -> pd.DataFrame:
-    feature_files = sorted(features_dir.glob("*.csv"))
-
-    if not feature_files:
-        raise FileNotFoundError(f"No feature files found in {features_dir}")
-
-    merged_frames = []
-    for feature_path in feature_files:
-        location = feature_path.stem
-        target_path = targets_dir / f"{location}.csv"
-
-        if not target_path.exists():
-            if verbose:
-                logger.warning(f"⚠️ Skipped {location}: target file not found")
-            continue
-
-        df_feat = pd.read_csv(feature_path, parse_dates=["date"])
-        df_tgt = pd.read_csv(target_path, parse_dates=["date"])
-
-        df_merged = pd.merge(
-            df_feat.sort_values("date"),
-            df_tgt.sort_values("date"),
-            on="date",
-            how="inner",
-            validate="one_to_one"
-        )
-
-        df_merged["location"] = location
-        merged_frames.append(df_merged)
-
-    if not merged_frames:
-        raise RuntimeError("No datasets were merged successfully")
-
-    final_df = pd.concat(merged_frames, ignore_index=True)
-
-    output_csv.parent.mkdir(parents=True, exist_ok=True)
-    final_df = convert_numeric(final_df, corrupt_col)
-    final_df.to_csv(output_csv, index=False)
-
-    if verbose:
-        print(f"\n✅ Final training dataset saved to: {output_csv}")
-        print(f"   Rows: {len(final_df):,}")
-        print(f"   Columns: {final_df.shape[1]}")
-
-    return final_df
 
 
 def make_time_key(
@@ -251,16 +131,6 @@ def make_time_key(
     df = df.copy()
     df[out_col] = pd.to_datetime(df[col], format='mixed').dt.strftime(fmt)
     return df
-
-
-def infer_time_resolution(series: pd.Series) -> str:
-    s = pd.to_datetime(series, errors="coerce").dropna()
-
-    if s.dt.day.nunique() > 1:
-        return "daily"
-    if s.dt.month.nunique() > 1:
-        return "monthly"
-    return "yearly"
 
 
 def align_to_daily(df: pd.DataFrame) -> pd.DataFrame:

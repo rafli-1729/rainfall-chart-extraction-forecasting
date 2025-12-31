@@ -30,7 +30,8 @@ from src.features import (
     CyclicalInteractionFeatures,
     DropFeatures,
     DebugTransformer,
-    StructuralWeatherImputer
+    StructuralWeatherImputer,
+    AddExternalFeatures,
 )
 
 from sklearn.base import BaseEstimator, RegressorMixin, clone
@@ -73,9 +74,10 @@ class TwoStageRainfallModel(BaseEstimator, RegressorMixin):
         return p_rain * rain_pred
 
 
-def build_feature_pipeline():
+def build_feature_pipeline(external_df: pd.DataFrame):
     return Pipeline(steps=[
         ("structural_imputer", StructuralWeatherImputer()),
+        ("external_features", AddExternalFeatures(external_df)),
         ("time", TimeFeatures()),
         ("temp", TemperatureFeatures()),
         ("wind_rain", WindRainFeatures()),
@@ -149,7 +151,7 @@ def build_regressor(xgb_params=None, transform_target=False):
     return model
 
 def build_model(
-    model_type="regressor",
+    model_type: str = "regressor",
     xgb_params=None,
     transform_target=False,
     classifier_params=None,
@@ -180,12 +182,12 @@ def build_model(
     raise ValueError(f"Unknown model_type: {model_type}")
 
 def build_pipeline(
-    model_type="two_stage",
-    xgb_params=None,
-    transform_target=False
+    external_df: pd.DataFrame,
+    model_type: str ="two_stage",
+    transform_target: bool = False
 ):
     return Pipeline(steps=[
-        ("features", build_feature_pipeline()),
+        ("features", build_feature_pipeline(external_df)),
         ("preprocess", build_preprocessor()),
         ("model", build_model(
             model_type=model_type,
