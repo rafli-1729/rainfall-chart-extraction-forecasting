@@ -212,22 +212,10 @@ con.close()
 
 # ================================= CHART & KPIs =================================
 
-render_component(
-    html_path=Path("app/assets/kpi/city.html"),
-    css_path=Path("app/assets/kpi/city.css"),
-    js_path=Path("app/assets/kpi/script.js"),
-    location= selected_location,
-    height=45,
-    city_mae=city_mae,
-    city_bias=city_bias,
-    city_false_rain=city_false_rain
-)
-
 year_mae = kpi_value(year_mae, "mm")
 year_bias = kpi_value(year_bias, "mm")
 year_extreme = kpi_value(year_extreme, "mm")
 year_false_rain = kpi_value(year_false_rain, "%")
-
 
 year_mae_baseline_pct, year_mae_baseline_class = (
     format_baseline(mae_impr_pct)
@@ -241,7 +229,7 @@ render_component(
     html_path=Path("app/assets/kpi/year.html"),
     css_path=Path("app/assets/kpi/year.css"),
     js_path=Path("app/assets/kpi/script.js"),
-    height=250,
+    height=240,
 
     location=selected_location,
     year=selected_year,
@@ -269,99 +257,119 @@ render_component(
     year_extreme_baseline_class=year_extreme_baseline_class
 )
 
-payload_ts = build_timeseries_payload(
-    weekly_df,
-    series_map={
-        "Observed": "observed_mm",
-        "Extracted": "extracted_mm",
-        "Predicted": "cv_predicted_mm",
+if not daily_df["cv_predicted_mm"].isna().all():
+    payload_ts = build_timeseries_payload(
+        weekly_df,
+        series_map={
+            "Observed": "observed_mm",
+            "Extracted": "extracted_mm",
+            "Predicted": "cv_predicted_mm",
+        }
+    )
+
+    calibration_df = daily_df[["extracted_mm", "cv_predicted_mm"]].dropna()
+
+    payload_calibration = {
+        "x": calibration_df["extracted_mm"].astype(float).tolist(),
+        "y": calibration_df["cv_predicted_mm"].astype(float).tolist()
     }
-)
 
-calibration_df = daily_df[["extracted_mm", "cv_predicted_mm"]].dropna()
+    col1, col2 = st.columns([2, 1])
+    with col1:
+        render_component(
+            html_path=assets_dir / "chart/line.html",
+            css_path=assets_dir / "chart/style.css",
+            js_path=assets_dir / "chart/line.js",
+            height=320,
+            PAYLOAD_JSON=json.dumps(payload_ts),
+            TITLE="Average Weekly Rainfall Trend",
+            SUBTITLE=f"{selected_location} • {selected_year}"
+        )
 
-payload_calibration = {
-    "x": calibration_df["extracted_mm"].astype(float).tolist(),
-    "y": calibration_df["cv_predicted_mm"].astype(float).tolist()
-}
+    with col2:
+        render_component(
+            html_path=assets_dir / "chart/calibration.html",
+            css_path=assets_dir / "chart/style.css",
+            js_path=assets_dir / "chart/calibration.js",
+            height=320,
+            PAYLOAD_JSON=json.dumps(payload_calibration),
+            TITLE="Predicted vs Extracted",
+            SUBTITLE=""
+        )
 
-col1, col2 = st.columns([2, 1])
-with col1:
+    payload_error = {
+        "dates": weekly_df["date"].dt.strftime("%Y-%m-%d").tolist(),
+        "bias": (weekly_df["observed_mm"] - weekly_df["extracted_mm"]).tolist()
+    }
+
+    render_component(
+        html_path=assets_dir / "chart/error.html",
+        css_path=assets_dir / "chart/style.css",
+        js_path=assets_dir / "chart/error.js",
+        height=320,
+        PAYLOAD_JSON=json.dumps(payload_error),
+        TITLE="Average Weekly Bias",
+        SUBTITLE=f"{selected_location} • {selected_year}"
+    )
+
+    p90 = weekly_df["extracted_mm"].quantile(0.9)
+
+    extreme_df = daily_df[daily_df["extracted_mm"] >= p90]
+    payload_extreme = build_timeseries_payload(
+        extreme_df,
+        series_map={
+            "Extreme Error": "abs_error"
+        }
+    )
+
+    payload_dist = {
+        "values": daily_df["abs_error"]
+            .dropna()
+            .astype(float)
+            .tolist()
+    }
+
+    col1, col2 = st.columns([1, 2])
+    with col1:
+        render_component(
+            html_path=assets_dir / "chart/error.html",
+            css_path=assets_dir / "chart/style.css",
+            js_path=assets_dir / "chart/extreme.js",
+            height=320,
+            PAYLOAD_JSON=json.dumps(payload_extreme),
+            TITLE="Daily Extreme Error",
+            SUBTITLE=f"{selected_location} • {selected_year}"
+        )
+
+    with col2:
+        render_component(
+            html_path=assets_dir / "chart/error_dist.html",
+            css_path=assets_dir / "chart/style.css",
+            js_path=assets_dir / "chart/error_dist.js",
+            height=320,
+            PAYLOAD_JSON=json.dumps(payload_dist),
+            TITLE="Daily Error Distribution",
+            SUBTITLE=f"{selected_location} • {selected_year}"
+        )
+else:
+    payload_ts = build_timeseries_payload(
+        weekly_df,
+        series_map={
+            "Observed": "observed_mm",
+            "Extracted": "extracted_mm",
+            "Predicted": "cv_predicted_mm",
+        }
+    )
     render_component(
         html_path=assets_dir / "chart/line.html",
         css_path=assets_dir / "chart/style.css",
         js_path=assets_dir / "chart/line.js",
-        height=300,
+        height=320,
         PAYLOAD_JSON=json.dumps(payload_ts),
         TITLE="Average Weekly Rainfall Trend",
         SUBTITLE=f"{selected_location} • {selected_year}"
     )
 
-with col2:
-    render_component(
-        html_path=assets_dir / "chart/calibration.html",
-        css_path=assets_dir / "chart/style.css",
-        js_path=assets_dir / "chart/calibration.js",
-        height=300,
-        PAYLOAD_JSON=json.dumps(payload_calibration),
-        TITLE="Predicted vs Extracted",
-        SUBTITLE=f"{selected_location} • {selected_year}"
-    )
-
-payload_error = {
-    "dates": weekly_df["date"].dt.strftime("%Y-%m-%d").tolist(),
-    "bias": (weekly_df["cv_predicted_mm"] - weekly_df["extracted_mm"]).tolist()
-}
-
-render_component(
-    html_path=assets_dir / "chart/error.html",
-    css_path=assets_dir / "chart/style.css",
-    js_path=assets_dir / "chart/error.js",
-    height=300,
-    PAYLOAD_JSON=json.dumps(payload_error),
-    TITLE="Average Weekly Bias",
-    SUBTITLE=f"{selected_location} • {selected_year}"
-)
-
-p90 = weekly_df["extracted_mm"].quantile(0.9)
-
-extreme_df = weekly_df[daily_df["extracted_mm"] >= p90]
-payload_extreme = build_timeseries_payload(
-    extreme_df,
-    series_map={
-        "Extreme Error": "abs_error"
-    }
-)
-
-payload_dist = {
-    "values": daily_df["abs_error"]
-        .dropna()
-        .astype(float)
-        .tolist()
-}
-
-col1, col2 = st.columns([1, 2])
-with col1:
-    render_component(
-        html_path=assets_dir / "chart/error.html",
-        css_path=assets_dir / "chart/style.css",
-        js_path=assets_dir / "chart/extreme.js",
-        height=300,
-        PAYLOAD_JSON=json.dumps(payload_extreme),
-        TITLE="Daily Extreme Error",
-        SUBTITLE=f"{selected_location} • {selected_year}"
-    )
-
-with col2:
-    render_component(
-        html_path=assets_dir / "chart/error_dist.html",
-        css_path=assets_dir / "chart/style.css",
-        js_path=assets_dir / "chart/error_dist.js",
-        height=300,
-        PAYLOAD_JSON=json.dumps(payload_dist),
-        TITLE="Daily Error Distribution",
-        SUBTITLE=f"{selected_location} • {selected_year}"
-    )
 
 
 html(load_html(config.paths.templates/'divider.html'), height=10)

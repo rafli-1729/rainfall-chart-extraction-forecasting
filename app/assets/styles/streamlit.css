@@ -9,8 +9,8 @@ footer {
     background: linear-gradient(
         180deg,
         #0f172a 0%,
-        #1c1917 85%,
-        #3f2f1f 100%
+        #334e68 60%,
+        #cfe8f3 100%
     );
     padding-top: 0;
 }
@@ -28,7 +28,7 @@ footer {
     padding-left: 2rem;
     padding-right: 2rem;
 
-    max-width: 1100px;
+    max-width: 1000px;
 
     border-radius: 24px;
     background: rgba(238, 242, 255, 0.9);

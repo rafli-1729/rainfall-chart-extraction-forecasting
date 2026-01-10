@@ -21,7 +21,7 @@ from src.config import config
 # ===================================== APP INIT =====================================
 
 app = FastAPI(title="Rainfall Forecasting API")
-_model = load_model(model_path=config.paths.models/'obs_model.pkl')
+_model = load_model(model_path=config.paths.models/'cv_model_v2.pkl')
 
 # ===================================== LOAD EXTERNAL FEATURES ONCE =====================================
 
