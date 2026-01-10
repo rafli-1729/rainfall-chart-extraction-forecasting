@@ -14,13 +14,12 @@ processed_dir   = "data/processed"
 clean_dir       = "data/clean"
 inference_dir   = "data/inference"
 
-database_dir    = "database"
-
+database_dir    = "app/database"
 assets_dir      = "app/assets"
 template_dir    = "app/assets/templates"
 style_dir       = "app/assets/styles"
+models_dir      = "app/models"
 
-models_dir      = "models"
 metadata_dir    = "metadata"
 
 [api]
