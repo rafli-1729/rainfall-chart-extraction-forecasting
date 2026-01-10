@@ -11,17 +11,14 @@ def main():
     train = pd.read_csv(config.paths.processed/'train.csv')
     test = pd.read_csv(config.paths.processed/'test.csv')
 
-    target = pd.read_csv(config.paths.processed/'train_target.csv')
-    external_features = pd.read_csv(config.paths.processed/'external_features.csv')
+    target = pd.read_csv(config.paths.processed/'train_target_v2.csv')
 
     train = pd.merge(train, target, on=['location', 'date'], how='outer')
-    # train = pd.merge(train, external_features, on='date', how='left')
 
     train = convert_numeric(train, columns=rain_col+met_col)
     train.drop(columns='csv_files', inplace=True)
-    train.to_csv(config.paths.clean/"train.csv", index=False)
+    train.to_csv(config.paths.clean/"train_v2.csv", index=False)
 
-    test = pd.merge(test, external_features, on='date', how='left')
     test = convert_numeric(test, columns=rain_col+met_col)
     test.drop(columns='csv_files', inplace=True)
     test.to_csv(config.paths.clean/'test.csv', index=False)

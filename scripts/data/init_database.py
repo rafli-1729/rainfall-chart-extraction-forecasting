@@ -5,7 +5,7 @@ from pathlib import Path
 from src.config import config
 
 def load_raw_data():
-    df = pd.read_csv(config.paths.clean / "daily.csv")
+    df = pd.read_csv(config.paths.clean / "daily_v2.csv")
     df["date"] = pd.to_datetime(df["date"])
     return df
 
@@ -25,10 +25,10 @@ weekly = build_weekly_aggregates(df)
 
 con = duckdb.connect(config.paths.database/'rainfall.duckdb')
 
-con.execute("DROP TABLE IF EXISTS daily_rainfall;")
-con.execute("CREATE TABLE daily_rainfall AS SELECT * FROM df")
+con.execute("DROP TABLE IF EXISTS daily_rainfall_v2;")
+con.execute("CREATE TABLE daily_rainfall_v2 AS SELECT * FROM df")
 
-con.execute("DROP TABLE IF EXISTS weekly_rainfall;")
-con.execute("CREATE TABLE weekly_rainfall AS SELECT * FROM weekly")
+con.execute("DROP TABLE IF EXISTS weekly_rainfall_v2;")
+con.execute("CREATE TABLE weekly_rainfall_v2 AS SELECT * FROM weekly")
 
 con.close()

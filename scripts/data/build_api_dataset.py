@@ -6,10 +6,10 @@ import joblib
 from src.config import config
 
 def main():
-    cv_model = joblib.load(config.paths.models/"cv_model.pkl")
+    cv_model = joblib.load(config.paths.models/"cv_model_v2.pkl")
     obs_model = joblib.load(config.paths.models/"obs_model.pkl")
 
-    train = pd.read_csv(config.paths.clean/"train.csv")
+    train = pd.read_csv(config.paths.clean/"train_v2.csv")
     wss = pd.read_csv(config.paths.clean/"wss.csv")
     wss = wss[["date", "location", "daily_rainfall_total_mm"]]
 
@@ -53,7 +53,7 @@ def main():
     )
 
     daily.sort_values(['location', 'date'], inplace=True)
-    daily.dropna(subset=["observed_mm"]).to_csv(config.paths.clean/"daily.csv", index=False)
+    daily.dropna(subset=["observed_mm"]).to_csv(config.paths.clean/"daily_v2.csv", index=False)
 
 
 if __name__ == "__main__":

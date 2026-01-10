@@ -56,7 +56,7 @@ if __name__ == "__main__":
     )
 
     print("MAE per fold:", -scores)
-    print("Mean MSE:", -scores.mean())
+    print("Mean MAE:", -scores.mean())
 
     print("Fitting final model...")
     pipe.fit(X, y)

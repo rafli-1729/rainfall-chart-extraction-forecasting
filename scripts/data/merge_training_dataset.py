@@ -59,8 +59,8 @@ def main():
 
     # ================================ Train Target ================================
 
-    train_target_files = config.paths.interim/'extract'
-    train_target_dir = config.paths.processed/'train_target.csv'
+    train_target_files = config.paths.interim/'extractedv2'
+    train_target_dir = config.paths.processed/'train_target_v2.csv'
 
     train_target_df = concatenate_csv_files(id="location",
                                             input_root=train_target_files,

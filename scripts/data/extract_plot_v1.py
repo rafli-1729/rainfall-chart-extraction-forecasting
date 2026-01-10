@@ -7,10 +7,8 @@ from tqdm import tqdm
 import logging
 
 from src.config import config
-from src.plot_extraction import (
-    count_total_rows,
-    extract_rainfall_from_plot
-)
+from src.plot_label_extractor import count_total_rows
+from src.dots_extractor_v1 import extract_rainfall_from_plot
 from src.dataset_builder import clean_column_names
 
 logging.basicConfig(
@@ -62,7 +60,6 @@ def main():
                     index=False
                 )
 
-            break
 
 if __name__ == "__main__":
     main()
