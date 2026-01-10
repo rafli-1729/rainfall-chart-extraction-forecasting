@@ -1,10 +1,16 @@
 # Data
 *.csv
 *.png
+
+**/_debug/*
+**/debug_failed/*
+
 !data/
 !data/**/
 !.gitkeep
 !locations.csv
+!data/samples/*
+
 
 # Models & embeddings
 models/*.pkl
