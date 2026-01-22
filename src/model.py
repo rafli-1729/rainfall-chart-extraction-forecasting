@@ -58,7 +58,6 @@ class TwoStageRainfallModel(BaseEstimator, RegressorMixin):
             return self
 
         self.has_regressor_ = True
-
         self.reg_.fit(X[mask], y.to_numpy()[mask])
 
         return self
